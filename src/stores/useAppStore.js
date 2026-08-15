@@ -1,0 +1,591 @@
+import { reactive, watch } from 'vue';
+
+const STORAGE_KEY = 'doolae_app_state_v2';
+
+const TRANSLATIONS = {
+  TH: {
+    brandName: "ดูแล (Doo-Lae)",
+    brandTagline: "Generations Care & Transit",
+    brandSubtitle: "แอปพลิเคชันดูแลคนที่คุณรักและการเดินทาง",
+    welcomeTitle: "ยินดีต้อนรับสู่ 'ดูแล'",
+    welcomeDesc: "บริการดูแลผู้สูงอายุ พี่เลี้ยงเด็ก และรถรับส่งที่ไว้วางใจได้",
+    emailPhone: "อีเมล หรือ เบอร์โทรศัพท์",
+    password: "รหัสผ่าน",
+    loginBtn: "เข้าสู่ระบบ",
+    registerBtn: "สมัครสมาชิกใหม่",
+    guestDemo: "ทดลองใช้งาน (Demo Login)",
+    socialGoogle: "เข้าสู่ระบบด้วย Google",
+    socialApple: "เข้าสู่ระบบด้วย Apple ID",
+    selectRoleTitle: "เลือกบทบาทการใช้งาน",
+    selectRoleDesc: "ท่านต้องการเข้าใช้งานในฐานะใด?",
+    roleCustomer: "ผู้ใช้บริการ / ญาติ",
+    roleCustomerSub: "ค้นหาผู้ดูแล จองบริการ ติดตาม GPS และดูกล้อง Real-time",
+    roleProvider: "ผู้ดูแล / พี่เลี้ยง / คนขับ",
+    roleProviderSub: "เปิดรับงาน บันทึกสัญญาณชีพ รายงานพบแพทย์ และรับรายได้",
+    switchRole: "สลับโหมด",
+    logout: "ออกจากระบบ",
+    online: "พร้อมรับงาน (Online)",
+    offline: "ปิดรับงาน (Offline)",
+    
+    // Services
+    servicesTitle: "บริการที่คุณต้องการ",
+    servicesSubtitle: "เลือกบริการการดูแลที่ออกแบบมาเพื่อครอบครัวของคุณ",
+    seniorCare: "ดูแลผู้สูงอายุ & พักฟื้น",
+    seniorCareDesc: "พยาบาลและผู้ดูแลมืออาชีพ บันทึกสุขภาพ พาพบแพทย์",
+    childCare: "ดูแลเด็กเล็ก & พี่เลี้ยง",
+    childCareDesc: "พี่เลี้ยงใจดี เสริมสร้างพัฒนาการ กล้อง Live Cam",
+    transitCare: "รถรับส่งผู้สูงวัย & เด็ก (Transit)",
+    transitCareDesc: "คนขับผ่านการตรวจประวัติ GPS Tracking ตลอดเส้นทาง",
+    
+    // Caregiver Directory
+    findCaregiver: "ค้นหาผู้ดูแลและคนขับใกล้คุณ",
+    allRoles: "ทั้งหมด",
+    verified: "ยืนยันตัวตนแล้ว",
+    reviews: "รีวิว",
+    rateHour: "บาท/ชม.",
+    bookNow: "จองเวลา",
+    bookServiceTitle: "ยืนยันการจองบริการ",
+    serviceHours: "จำนวนชั่วโมงที่ต้องการ",
+    totalAmount: "ยอดรวมทั้งสิ้น",
+    confirmBookingPay: "ยืนยันการจอง & ชำระเงิน",
+    paymentPromptPay: "ชำระผ่าน PromptPay QR",
+    bookingSuccess: "จองบริการสำเร็จเรียบร้อยแล้ว!",
+    
+    // Active Care & Tracking
+    activeBookingBanner: "กำลังรับบริการดูแล",
+    caregiverInfo: "ผู้ดูแลประจำตัว",
+    gpsTrackerTitle: "พิกัดผู้ดูแล & คนขับ (GPS Tracking)",
+    gpsStatusSafe: "ปกติ (อยู่ในเขตปลอดภัย)",
+    gpsEta: "กำลังเดินทาง คาดว่าจะถึงในอีก 10 นาที",
+    
+    // Checklist
+    dailyCareList: "รายการดูแลประจำวัน",
+    completed: "เสร็จแล้ว",
+    addTaskBtn: "+ เพิ่มรายการ",
+    addTaskTitle: "เพิ่มรายการดูแลใหม่",
+    taskName: "สิ่งที่ต้องการให้ทำ",
+    taskTime: "เวลาที่กำหนด",
+    saveTask: "บันทึกรายการ",
+    
+    // Nanny Cam
+    nannyCamTitle: "กล้องดูเด็ก Real-time (Live Nanny Cam)",
+    camLive: "ถ่ายทอดสด (LIVE)",
+    camTalk: "พูดคุย 2 ทาง",
+    camMute: "ปิดเสียง",
+    camSnap: "ถ่ายภาพ",
+    
+    // Doctor Report
+    docReportTitle: "รายงานสรุปการไปพบแพทย์ล่าสุด",
+    hospitalName: "โรงพยาบาล / แผนก",
+    diagnosis: "คำวินิจฉัยแพทย์",
+    medUpdate: "การปรับเปลี่ยนยา",
+    nextAppt: "นัดหมายครั้งถัดไป",
+    expenses: "ค่ารักษาพยาบาล",
+    
+    // Chat
+    liveChat: "แชทสดกับผู้ดูแล",
+    chatPlaceholder: "พิมพ์ข้อความที่นี่...",
+    send: "ส่ง",
+    
+    // SOS
+    sosBtnText: "SOS ขอความช่วยเหลือฉุกเฉิน 24 ชม.",
+    sosTitle: "ศูนย์ช่วยเหลือฉุกเฉิน (SOS Emergency)",
+    sosCall1669: "โทร 1669 กู้ชีพฉุกเฉิน",
+    sosCallFamily: "โทรหาญาติฉุกเฉิน",
+    sosBroadcast: "แชร์พิกัด GPS ไปยังศูนย์กู้ชีพ",
+    
+    // Provider specific
+    providerDashboard: "แดชบอร์ดผู้ดูแล",
+    todayEarnings: "รายได้สะสมวันนี้",
+    completedJobsToday: "งานที่เสร็จสิ้นวันนี้",
+    ratingScore: "คะแนนรีวิวเฉลี่ย",
+    incomingJobs: "งานใหม่ที่เข้ามา",
+    acceptJob: "กดรับงาน",
+    declineJob: "ข้ามงานนี้",
+    activeJobTitle: "งานที่กำลังปฏิบัติหน้าที่",
+    logVitalsTitle: "บันทึกสัญญาณชีพ & สุขภาพ",
+    logChildTitle: "บันทึกการดื่มนม & กิจกรรมของเด็ก",
+    bloodPressure: "ความดันโลหิต (mmHg)",
+    bloodSugar: "ระดับน้ำตาล (mg/dL)",
+    temp: "อุณหภูมิร่างกาย (°C)",
+    heartRate: "อัตราการเต้นหัวใจ (bpm)",
+    submitVitals: "ส่งบันทึกสุขภาพให้ญาติ",
+    submitChildLog: "ส่งบันทึกกิจกรรมให้น้อง",
+    completeJobBtn: "ยืนยันทำงานเสร็จสมบูรณ์"
+  },
+  EN: {
+    brandName: "Doo-Lae",
+    brandTagline: "Generations Care & Transit",
+    brandSubtitle: "Care for loved ones & safe transit with heart",
+    welcomeTitle: "Welcome to 'Doo-Lae'",
+    welcomeDesc: "Trusted elder care, child care and safe transit companion",
+    emailPhone: "Email or Phone Number",
+    password: "Password",
+    loginBtn: "Log In",
+    registerBtn: "Sign Up",
+    guestDemo: "Quick Demo Login",
+    socialGoogle: "Continue with Google",
+    socialApple: "Continue with Apple ID",
+    selectRoleTitle: "Select Your Role",
+    selectRoleDesc: "How would you like to use Doo-Lae?",
+    roleCustomer: "Customer / Family",
+    roleCustomerSub: "Find caregivers, book services, track GPS & Live Cam",
+    roleProvider: "Caregiver / Nanny / Driver",
+    roleProviderSub: "Accept jobs, log vitals, submit reports & earn money",
+    switchRole: "Switch Mode",
+    logout: "Log Out",
+    online: "Online & Ready",
+    offline: "Offline",
+    
+    servicesTitle: "Select Care Service",
+    servicesSubtitle: "Tailored caregiving and transit solutions for your family",
+    seniorCare: "Senior & Recovery Care",
+    seniorCareDesc: "Certified nurses & caregivers, health logs, doctor visits",
+    childCare: "Child & Infant Care",
+    childCareDesc: "Loving nannies, child development, Live Nanny Cam",
+    transitCare: "Generations Transit",
+    transitCareDesc: "Background-checked drivers, real-time GPS tracking",
+    
+    findCaregiver: "Caregivers & Drivers Near You",
+    allRoles: "All Services",
+    verified: "Verified ID",
+    reviews: "reviews",
+    rateHour: "THB/hr",
+    bookNow: "Book Service",
+    bookServiceTitle: "Confirm Service Booking",
+    serviceHours: "Service Hours",
+    totalAmount: "Total Amount",
+    confirmBookingPay: "Confirm & Pay",
+    paymentPromptPay: "Pay via PromptPay QR",
+    bookingSuccess: "Service booked successfully!",
+    
+    activeBookingBanner: "Active Care in Progress",
+    caregiverInfo: "Assigned Caregiver",
+    gpsTrackerTitle: "Caregiver & Driver GPS Tracking",
+    gpsStatusSafe: "Normal (Safe Zone)",
+    gpsEta: "En route, arriving in approx 10 mins",
+    
+    dailyCareList: "Daily Care Checklist",
+    completed: "Completed",
+    addTaskBtn: "+ Add Task",
+    addTaskTitle: "Add Daily Task",
+    taskName: "Task Description",
+    taskTime: "Scheduled Time",
+    saveTask: "Save Task",
+    
+    nannyCamTitle: "Live Nanny Cam (Real-time)",
+    camLive: "LIVE STREAM",
+    camTalk: "2-Way Talk",
+    camMute: "Mute",
+    camSnap: "Snapshot",
+    
+    docReportTitle: "Latest Doctor Visit Summary",
+    hospitalName: "Hospital / Department",
+    diagnosis: "Doctor Diagnosis",
+    medUpdate: "Prescription Updates",
+    nextAppt: "Next Appointment",
+    expenses: "Medical Expenses",
+    
+    liveChat: "Live Chat with Caregiver",
+    chatPlaceholder: "Type your message here...",
+    send: "Send",
+    
+    sosBtnText: "24/7 Emergency SOS Assistance",
+    sosTitle: "Emergency SOS Center",
+    sosCall1669: "Call 1669 Medical Emergency",
+    sosCallFamily: "Call Family Contact",
+    sosBroadcast: "Broadcast GPS to Rescue Team",
+    
+    providerDashboard: "Provider Workplace",
+    todayEarnings: "Today's Earnings",
+    completedJobsToday: "Completed Jobs",
+    ratingScore: "Rating Score",
+    incomingJobs: "Incoming Job Requests",
+    acceptJob: "Accept Job",
+    declineJob: "Decline",
+    activeJobTitle: "Active On-Duty Assignment",
+    logVitalsTitle: "Log Vitals & Health Metrics",
+    logChildTitle: "Log Child Feeding & Activities",
+    bloodPressure: "Blood Pressure (mmHg)",
+    bloodSugar: "Blood Sugar (mg/dL)",
+    temp: "Body Temp (°C)",
+    heartRate: "Heart Rate (bpm)",
+    submitVitals: "Send Health Update to Family",
+    submitChildLog: "Send Activity Log to Parent",
+    completeJobBtn: "Mark Job as Completed"
+  }
+};
+
+const DEFAULT_CAREGIVERS = [
+  {
+    id: 1,
+    name: "พี่นี สุภาภรณ์ (พยาบาลวิชาชีพ)",
+    category: "senior",
+    role: "ผู้ดูแลผู้สูงอายุ & พักฟื้น",
+    rating: 4.95,
+    reviews: 88,
+    rate: 250,
+    experience: "ประสบการณ์ 8 ปี (รพ.รามาธิบดี)",
+    badge: "พยาบาลวิชาชีพ",
+    avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200&auto=format&fit=crop&q=80",
+    phone: "081-456-7890",
+    skills: ["วัดสัญญาณชีพ", "ป้อนอาหารทางสายยาง", "กายภาพบำบัดเบื้องต้น"]
+  },
+  {
+    id: 2,
+    name: "พี่ยา กัลยาณี (ผู้ดูแลเด็ก & ผู้สูงวัย)",
+    category: "senior",
+    role: "ผู้ดูแลสุขภาพผู้สูงอายุ & เด็กเล็ก",
+    rating: 4.88,
+    reviews: 64,
+    rate: 220,
+    experience: "ผ่านการอบรม Caregiver สปสช.",
+    badge: "ผ่านการรับรอง",
+    avatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=200&auto=format&fit=crop&q=80",
+    phone: "089-223-3445",
+    skills: ["จัดยาตามแพทย์สั่ง", "ดูแลสุขอนามัย", "พูดคุยสร้างกำลังใจ"]
+  },
+  {
+    id: 3,
+    name: "พี่ต่อ ชาญชัย (Transit Driver มืออาชีพ)",
+    category: "transit",
+    role: "คนขับรถรับส่งผู้สูงอายุ/เด็ก พร้อมช่วยเหลือ",
+    rating: 5.0,
+    reviews: 142,
+    rate: 300,
+    experience: "ขับขี่ปลอดภัย 12 ปี มีรถ Wheelchair",
+    badge: "First-Aid Certified",
+    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80",
+    phone: "086-789-0123",
+    skills: ["ยกรถเข็น Wheelchair", "ปฐมพยาบาล CPR", "GPS Tracking"]
+  },
+  {
+    id: 10,
+    name: "พี่อุ้ม รัตนาภรณ์ (พี่เลี้ยงเด็กปฐมวัย)",
+    category: "child",
+    role: "พี่เลี้ยงเด็กเล็ก & ส่งเสริมการเรียนรู้",
+    rating: 4.96,
+    reviews: 115,
+    rate: 250,
+    experience: "ปริญญาตรีปฐมวัย มีใบอนุญาตเลี้ยงเด็ก",
+    badge: "Montessori Certified",
+    avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&auto=format&fit=crop&q=80",
+    phone: "085-112-2334",
+    skills: ["ชงนม & เสริมสารอาหาร", "เล่านิทาน", "ฝึกทักษะ EF"]
+  },
+  {
+    id: 11,
+    name: "ครูฟ้า วรัญญา (พี่เลี้ยงเด็ก 0-6 ขวบ)",
+    category: "child",
+    role: "พยาบาลเด็ก & พี่เลี้ยงกิจกรรม",
+    rating: 4.92,
+    reviews: 79,
+    rate: 240,
+    experience: "อดีตพยาบาลแผนกทารกแรกเกิด 5 ปี",
+    badge: "พยาบาลเด็ก",
+    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80",
+    phone: "083-998-8776",
+    skills: ["CPR เด็กเล็ก", "นวดกระตุ้นพัฒนาการ", "บันทึกการกินและการนอน"]
+  }
+];
+
+const DEFAULT_CHECKLIST = [
+  { id: 1, text: 'ให้ยาลดความดัน & ยาเบาหวานช่วงเช้า', done: true, time: '08:00', category: 'senior' },
+  { id: 2, text: 'ชงนม 4 ออนซ์ & ทานอาหารมื้อเช้า', done: true, time: '08:30', category: 'all' },
+  { id: 3, text: 'วัดความดันโลหิต & บันทึกค่า', done: false, time: '12:00', category: 'senior' },
+  { id: 4, text: 'นอนกลางวัน พักผ่อน 1 ชั่วโมง', done: false, time: '13:00', category: 'all' },
+  { id: 5, text: 'กายภาพบำบัดยืดเส้น / เดินรอบสวน', done: false, time: '16:30', category: 'senior' }
+];
+
+const DEFAULT_CHAT = [
+  { id: 1, sender: 'provider', senderName: 'พี่นี (ผู้ดูแล)', text: 'สวัสดีครับ/ค่ะ ถึงบ้านเรียบร้อยพร้อมเริ่มดูแลคุณตาแล้วครับ', time: '08:05 น.' },
+  { id: 2, sender: 'customer', senderName: 'คุณศรัณย์', text: 'สวัสดีค่ะ รบกวนช่วยวัดความดันช่วงเที่ยงและเตือนทานยาด้วยนะคะ', time: '08:10 น.' },
+  { id: 3, sender: 'provider', senderName: 'พี่นี (ผู้ดูแล)', text: 'รับทราบครับ ให้ยาเช้าเรียบร้อยแล้ว อารมณ์ดีมากครับผม 😊', time: '08:32 น.' }
+];
+
+export function createAppStore() {
+  // Load saved state if any
+  let saved = null;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) saved = JSON.parse(raw);
+  } catch (e) {
+    console.warn('LocalStorage load error:', e);
+  }
+
+  const state = reactive({
+    lang: saved?.lang || 'TH',
+    role: saved?.role || 'customer', // 'customer' | 'provider'
+    isLoggedIn: saved?.isLoggedIn ?? true,
+    authStep: 1,
+    activeUser: saved?.activeUser || 'saran.w@rmutsb.ac.th',
+    customerView: saved?.customerView || 'services', // 'services' | 'caregivers' | 'dashboard'
+    activeTab: saved?.activeTab || 'senior', // 'senior' | 'child' | 'transit'
+    bottomNavTab: 'home', // 'home' | 'care' | 'map' | 'chat' | 'profile'
+    isDesktopFrame: saved?.isDesktopFrame ?? false,
+
+    // Bookings
+    bookedCaregiver: saved?.bookedCaregiver || DEFAULT_CAREGIVERS[0],
+    bookedNanny: saved?.bookedNanny || null,
+    bookedDriver: saved?.bookedDriver || null,
+
+    // Provider Side
+    acceptedJob: saved?.acceptedJob || null,
+    isOnline: saved?.isOnline ?? true,
+    providerEarnings: saved?.providerEarnings || 1450,
+    providerJobsCount: saved?.providerJobsCount || 3,
+    logTab: 'vitals', // 'vitals' | 'doctor' | 'child'
+
+    // Modals
+    showSosModal: false,
+    showAddModal: false,
+    bookingTarget: null,
+
+    // Data lists
+    caregivers: DEFAULT_CAREGIVERS,
+    checklist: saved?.checklist || DEFAULT_CHECKLIST,
+    chatMessages: saved?.chatMessages || DEFAULT_CHAT,
+
+    // Doctor & Health reports
+    doctorReport: saved?.doctorReport || {
+      hospital: 'โรงพยาบาลพญาไท 2 (แผนกอายุรกรรม)',
+      doctor: 'นพ. วิชัย สถิตย์มั่นคง',
+      vitals: 'ความดัน 125/82 mmHg, ชีพจร 74 bpm, น้ำตาล 108 mg/dL',
+      diagnosis: 'ควบคุมความดันโลหิตและน้ำตาลได้ดีมาก แนะนำให้ออกกำลังกายเบาๆ สม่ำเสมอ',
+      medChanges: 'ลดยาความดันเม็ดสีฟ้าเหลือครึ่งเม็ดหลังอาหารเช้า',
+      nextAppt: '15 ก.ย. 2026 เวลา 09:00 น.',
+      expenses: '1,250 บาท (เบิกประกันได้)',
+      date: '10 ส.ค. 2026'
+    },
+
+    childLogs: saved?.childLogs || [
+      { id: 1, type: 'milk', text: 'ดื่มนมแม่ชง 4 ออนซ์ หมดขวด', time: '08:30 น.' },
+      { id: 2, type: 'activity', text: 'เล่นต่อบล็อกไม้ฝึกกล้ามเนื้อมือ', time: '10:15 น.' },
+      { id: 3, type: 'sleep', text: 'นอนหลับกลางวัน 1 ชม. 30 นาที', time: '13:00 น.' }
+    ],
+
+    incomingJobs: [
+      {
+        id: 101,
+        type: 'senior',
+        title: 'ดูแลผู้สูงอายุ & พักฟื้น (คุณตาสมชาย)',
+        clientName: 'คุณศรัณย์ วงศ์สวัสดิ์',
+        clientPhone: '081-234-5678',
+        location: 'พญาไท, กรุงเทพฯ (ห่าง 1.8 กม.)',
+        duration: '4 ชั่วโมง',
+        payout: 900,
+        rate: 225,
+        urgent: true
+      },
+      {
+        id: 102,
+        type: 'child',
+        title: 'ดูแลเด็กเล็ก & พี่เล่น (น้องแก้ว 3 ขวบ)',
+        clientName: 'คุณแม่สิริพร',
+        clientPhone: '089-987-6543',
+        location: 'อารีย์ ซอย 4, กรุงเทพฯ (ห่าง 2.5 กม.)',
+        duration: '3 ชั่วโมง',
+        payout: 660,
+        rate: 220,
+        urgent: false
+      },
+      {
+        id: 103,
+        type: 'transit',
+        title: 'รับส่งพบแพทย์ รพ.จุฬาลงกรณ์',
+        clientName: 'คุณนพดล',
+        clientPhone: '084-555-1122',
+        location: 'สุขุมวิท 39 -> รพ.จุฬาฯ',
+        duration: '2.5 ชั่วโมง',
+        payout: 750,
+        rate: 300,
+        urgent: false
+      }
+    ],
+
+    // Toast
+    toast: {
+      show: false,
+      message: '',
+      type: 'success'
+    }
+  });
+
+  // Watch state and save to local storage
+  watch(
+    () => ({
+      lang: state.lang,
+      role: state.role,
+      isLoggedIn: state.isLoggedIn,
+      activeUser: state.activeUser,
+      customerView: state.customerView,
+      activeTab: state.activeTab,
+      isDesktopFrame: state.isDesktopFrame,
+      bookedCaregiver: state.bookedCaregiver,
+      bookedNanny: state.bookedNanny,
+      bookedDriver: state.bookedDriver,
+      acceptedJob: state.acceptedJob,
+      isOnline: state.isOnline,
+      providerEarnings: state.providerEarnings,
+      providerJobsCount: state.providerJobsCount,
+      checklist: state.checklist,
+      chatMessages: state.chatMessages,
+      doctorReport: state.doctorReport,
+      childLogs: state.childLogs
+    }),
+    (val) => {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(val));
+      } catch (e) {
+        console.warn('LocalStorage save error:', e);
+      }
+    },
+    { deep: true }
+  );
+
+  // Helper Methods
+  const t = (key) => {
+    return TRANSLATIONS[state.lang]?.[key] || TRANSLATIONS['TH'][key] || key;
+  };
+
+  const showToast = (message, type = 'success') => {
+    state.toast = { show: true, message, type };
+    setTimeout(() => {
+      if (state.toast.message === message) {
+        state.toast.show = false;
+      }
+    }, 3200);
+  };
+
+  const toggleTask = (id) => {
+    const item = state.checklist.find(c => c.id === id);
+    if (item) {
+      item.done = !item.done;
+      showToast(item.done ? `✅ ทำรายการ '${item.text}' สำเร็จ` : `ยกเลิกสถานะทำแล้ว`);
+    }
+  };
+
+  const addTask = (text, time = '10:00', category = 'all') => {
+    if (!text || !text.trim()) return;
+    const newTask = {
+      id: Date.now(),
+      text: text.trim(),
+      time,
+      done: false,
+      category
+    };
+    state.checklist.push(newTask);
+    state.showAddModal = false;
+    showToast(`➕ เพิ่มรายการ '${newTask.text}' เรียบร้อยแล้ว`);
+  };
+
+  const deleteTask = (id) => {
+    const idx = state.checklist.findIndex(c => c.id === id);
+    if (idx !== -1) {
+      const deleted = state.checklist.splice(idx, 1)[0];
+      showToast(`🗑️ ลบรายการ '${deleted.text}' แล้ว`, 'info');
+    }
+  };
+
+  const bookService = (caregiver, hours = 4) => {
+    if (!caregiver) return;
+    if (caregiver.category === 'child') {
+      state.bookedNanny = caregiver;
+      state.activeTab = 'child';
+    } else if (caregiver.category === 'transit') {
+      state.bookedDriver = caregiver;
+      state.activeTab = 'transit';
+    } else {
+      state.bookedCaregiver = caregiver;
+      state.activeTab = 'senior';
+    }
+    state.customerView = 'dashboard';
+    state.bookingTarget = null;
+    showToast(`🎉 จอง ${caregiver.name} (${hours} ชม.) เรียบร้อยแล้ว!`, 'success');
+  };
+
+  const cancelBooking = (type = 'senior') => {
+    if (type === 'child') state.bookedNanny = null;
+    else if (type === 'transit') state.bookedDriver = null;
+    else state.bookedCaregiver = null;
+    showToast('ยกเลิกบริการเรียบร้อยแล้ว', 'info');
+  };
+
+  const sendChatMessage = (text, sender = 'customer') => {
+    if (!text || !text.trim()) return;
+    const now = new Date();
+    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')} น.`;
+    
+    const newMsg = {
+      id: Date.now(),
+      sender,
+      senderName: sender === 'customer' ? 'คุณ (ผู้ใช้บริการ)' : (state.acceptedJob?.title || 'ผู้ดูแล'),
+      text: text.trim(),
+      time: timeStr
+    };
+    state.chatMessages.push(newMsg);
+  };
+
+  const acceptJob = (job) => {
+    state.acceptedJob = job;
+    showToast(`👍 รับงาน '${job.title}' เรียบร้อยแล้ว! พร้อมเริ่มปฏิบัติหน้าที่`, 'success');
+  };
+
+  const completeJob = () => {
+    if (!state.acceptedJob) return;
+    const payout = state.acceptedJob.payout || 600;
+    state.providerEarnings += payout;
+    state.providerJobsCount += 1;
+    showToast(`🏆 ปฏิบัติงานสำเร็จ! ได้รับค่าบริการ ฿${payout}`, 'success');
+    state.acceptedJob = null;
+  };
+
+  const logVitals = (bp, sugar, hr, temp) => {
+    const summary = `ความดัน ${bp || '120/80'} mmHg, น้ำตาล ${sugar || '105'} mg/dL, ชีพจร ${hr || '75'} bpm, อุณหภูมิ ${temp || '36.6'} °C`;
+    state.doctorReport.vitals = summary;
+    state.doctorReport.date = 'วันนี้ (อัปเดตล่าสุด)';
+    showToast('🩺 ส่งบันทึกสัญญาณชีพให้ญาติเรียบร้อยแล้ว!', 'success');
+  };
+
+  const logDoctorReport = (data) => {
+    state.doctorReport = {
+      ...state.doctorReport,
+      ...data,
+      date: 'วันนี้'
+    };
+    showToast('🏥 ส่งรายงานการไปพบแพทย์ให้ญาติเรียบร้อยแล้ว!', 'success');
+  };
+
+  const logChildActivity = (type, text) => {
+    if (!text) return;
+    const now = new Date();
+    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')} น.`;
+    state.childLogs.unshift({
+      id: Date.now(),
+      type,
+      text,
+      time: timeStr
+    });
+    showToast('🍼 บันทึกกิจกรรมเด็กและแจ้งผู้ปกครองแล้ว!', 'success');
+  };
+
+  return {
+    state,
+    t,
+    showToast,
+    toggleTask,
+    addTask,
+    deleteTask,
+    bookService,
+    cancelBooking,
+    sendChatMessage,
+    acceptJob,
+    completeJob,
+    logVitals,
+    logDoctorReport,
+    logChildActivity
+  };
+}
+
+// Global store singleton
+export const store = createAppStore();

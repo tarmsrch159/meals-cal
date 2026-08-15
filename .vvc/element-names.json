@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "elements": {
+    "vce_58a6dc7b6f23": {
+      "officialName": "IndexDocumentButton1",
+      "sourceGroupId": "vce_58a6dc7b6f23",
+      "sid": "vce_58a6dc7b6f23",
+      "sourceKey": "index.html:script-template[197:18]/button[217:13]",
+      "file": "index.html",
+      "component": "indexDocument",
+      "element": "button",
+      "elementPath": "script-template[197:18]/button[217:13]",
+      "sourceLocation": {
+        "line": 217,
+        "column": 13
+      },
+      "updatedAt": "2026-08-09T12:42:41.032Z"
+    },
+    "vce_7605a4edf3e5": {
+      "officialName": "IndexDocumentButtonmbnm",
+      "sourceGroupId": "vce_7605a4edf3e5",
+      "sid": "vce_7605a4edf3e5",
+      "sourceKey": "index.html:script-template[232:19]/button[249:17]",
+      "file": "index.html",
+      "component": "indexDocument",
+      "element": "button",
+      "elementPath": "script-template[232:19]/button[249:17]",
+      "sourceLocation": {
+        "line": 249,
+        "column": 17
+      },
+      "updatedAt": "2026-08-09T12:41:09.272Z"
+    },
+    "vce_6955cd002774": {
+      "officialName": "IndexDocumentContainer",
+      "sourceGroupId": "vce_6955cd002774",
+      "sid": "vce_6955cd002774",
+      "sourceKey": "index.html:script-template[232:19]/div[234:15]",
+      "file": "index.html",
+      "component": "indexDocument",
+      "element": "div",
+      "elementPath": "script-template[232:19]/div[234:15]",
+      "sourceLocation": {
+        "line": 234,
+        "column": 15
+      },
+      "updatedAt": "2026-08-09T12:41:57.208Z"
+    }
+  }
+}
