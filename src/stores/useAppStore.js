@@ -442,15 +442,32 @@ export function createAppStore() {
     console.warn('LocalStorage load error:', e);
   }
 
+  // Check URL parameters for direct deeplinking (QR code scan)
+  let urlView = null;
+  let urlRole = 'customer';
+  if (typeof window !== 'undefined') {
+    try {
+      const searchParams = new URLSearchParams(window.location.search);
+      const hash = window.location.hash;
+      const v = searchParams.get('view') || searchParams.get('tab') || searchParams.get('feature') || searchParams.get('page');
+      if (v === 'ai-health' || v === 'health' || v === 'scanner' || hash === '#ai-health' || hash === '#health') {
+        urlView = 'ai-health';
+        urlRole = 'customer';
+      }
+    } catch (e) {
+      console.warn('URL routing parse error:', e);
+    }
+  }
+
   const state = reactive({
     lang: saved?.lang || 'TH',
-    role: saved?.role || 'customer', // 'customer' | 'provider'
-    isLoggedIn: saved?.isLoggedIn ?? true,
+    role: urlView ? 'customer' : (saved?.role || 'customer'), // 'customer' | 'provider'
+    isLoggedIn: urlView ? true : (saved?.isLoggedIn ?? true),
     authStep: 1,
     activeUser: saved?.activeUser || 'saran.w@rmutsb.ac.th',
-    customerView: saved?.customerView || 'services', // 'services' | 'caregivers' | 'dashboard' | 'ai-health'
+    customerView: urlView || saved?.customerView || 'services', // 'services' | 'caregivers' | 'dashboard' | 'ai-health'
     activeTab: saved?.activeTab || 'senior', // 'senior' | 'child' | 'transit' | 'health'
-    bottomNavTab: 'home', // 'home' | 'care' | 'map' | 'chat' | 'health' | 'profile'
+    bottomNavTab: urlView ? 'health' : (saved?.bottomNavTab || 'home'), // 'home' | 'care' | 'map' | 'chat' | 'health' | 'profile'
     isDesktopFrame: saved?.isDesktopFrame ?? false,
 
     // Bookings

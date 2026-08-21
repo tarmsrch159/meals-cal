@@ -38,6 +38,7 @@
 </template>
 
 <script setup>
+import { onMounted } from 'vue';
 import { store } from './stores/useAppStore.js';
 import HeaderBar from './components/HeaderBar.vue';
 import BottomNav from './components/BottomNav.vue';
@@ -52,6 +53,22 @@ import ProviderView from './views/ProviderView.vue';
 import AiHealthView from './views/AiHealthView.vue';
 
 const { state } = store;
+
+onMounted(() => {
+  try {
+    const searchParams = new URLSearchParams(window.location.search);
+    const hash = window.location.hash;
+    const v = searchParams.get('view') || searchParams.get('tab') || searchParams.get('feature') || searchParams.get('page');
+    if (v === 'ai-health' || v === 'health' || v === 'scanner' || hash === '#ai-health' || hash === '#health') {
+      state.isLoggedIn = true;
+      state.role = 'customer';
+      state.customerView = 'ai-health';
+      state.bottomNavTab = 'health';
+    }
+  } catch (e) {
+    console.warn('URL routing parse error:', e);
+  }
+});
 </script>
 
 <style>
