@@ -86,6 +86,29 @@
             </div>
           </div>
         </div>
+
+        <!-- AI Personal Health Card -->
+        <div class="service-hero-card health-hero" @click="goToAiHealth">
+          <img 
+            src="https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=700&auto=format&fit=crop&q=80" 
+            alt="AI Personal Health" 
+            class="hero-img"
+          />
+          <div class="hero-overlay">
+            <div class="hero-top-badge badge-cyan">
+              <Sparkles :size="14" />
+              <span>สแกนใบแล็บ & ปรึกษาหมอ AI</span>
+            </div>
+            <div class="hero-text-content">
+              <h3 class="hero-title">{{ t('aiHealthCare') }}</h3>
+              <p class="hero-desc">{{ t('aiHealthCareDesc') }}</p>
+            </div>
+            <div class="hero-cta">
+              <span>เปิดแดชบอร์ด</span>
+              <ArrowRight :size="15" />
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Nearby Caregivers Marketplace -->
@@ -475,7 +498,9 @@ import {
   Send, 
   AlertTriangle, 
   Phone, 
-  XCircle 
+  XCircle,
+  Sparkles,
+  Activity
 } from 'lucide-vue-next';
 
 const { state, t, showToast, toggleTask, deleteTask, sendChatMessage, cancelBooking } = store;
@@ -510,6 +535,11 @@ const progressPercent = computed(() => {
 const selectServiceCategory = (cat) => {
   state.activeTab = cat;
   state.customerView = 'dashboard';
+};
+
+const goToAiHealth = () => {
+  state.customerView = 'ai-health';
+  state.bottomNavTab = 'health';
 };
 
 const openBookingModal = (caregiver) => {
@@ -605,9 +635,15 @@ const handleCancelService = () => {
   gap: 16px;
 }
 
-@media (min-width: 768px) {
+@media (min-width: 640px) {
   .service-cards-grid {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .service-cards-grid {
+    grid-template-columns: repeat(4, 1fr);
   }
 }
 
@@ -663,6 +699,11 @@ const handleCancelService = () => {
 
 .badge-teal {
   background: rgba(13, 148, 136, 0.95);
+}
+
+.badge-cyan {
+  background: linear-gradient(135deg, #00B4D8 0%, #0077B6 100%);
+  box-shadow: 0 2px 8px rgba(0, 180, 216, 0.4);
 }
 
 .hero-title {

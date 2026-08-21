@@ -13,6 +13,17 @@
 
     <button 
       class="nav-item" 
+      :class="{ active: state.customerView === 'ai-health' || state.bottomNavTab === 'health' }"
+      @click="navigate('health')"
+    >
+      <div class="icon-wrap">
+        <Activity :size="20" />
+      </div>
+      <span class="nav-label">สุขภาพ AI</span>
+    </button>
+
+    <button 
+      class="nav-item" 
       :class="{ active: state.bottomNavTab === 'care' }"
       @click="navigate('care')"
     >
@@ -64,6 +75,7 @@ import { computed } from 'vue';
 import { store } from '../stores/useAppStore.js';
 import { 
   Home, 
+  Activity,
   ClipboardList, 
   MapPin, 
   MessageSquare, 
@@ -81,6 +93,8 @@ const navigate = (tab) => {
   if (state.role === 'customer') {
     if (tab === 'home') {
       state.customerView = 'services';
+    } else if (tab === 'health') {
+      state.customerView = 'ai-health';
     } else if (tab === 'care') {
       state.customerView = 'dashboard';
       setTimeout(() => {
@@ -108,6 +122,8 @@ const navigate = (tab) => {
     if (tab === 'profile') {
       state.role = 'customer';
       showToast('สลับสู่โหมด: ผู้ใช้บริการ (Customer)', 'info');
+    } else if (tab === 'health') {
+      state.customerView = 'ai-health';
     } else {
       setTimeout(() => {
         const el = document.getElementById(tab + '-section');

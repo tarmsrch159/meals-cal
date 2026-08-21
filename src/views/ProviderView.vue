@@ -143,7 +143,14 @@
               :class="{ active: state.logTab === 'vitals' }"
               @click="state.logTab = 'vitals'"
             >
-              🩺 สัญญาณชีพ & สุขภาพ
+              🩺 สัญญาณชีพ
+            </button>
+            <button 
+              class="log-tab-btn tab-highlight-cyan" 
+              :class="{ active: state.logTab === 'scanner' }"
+              @click="state.logTab = 'scanner'"
+            >
+              📸 AI สแกนใบตรวจ
             </button>
             <button 
               class="log-tab-btn" 
@@ -157,12 +164,17 @@
               :class="{ active: state.logTab === 'child' }"
               @click="state.logTab = 'child'"
             >
-              🍼 กิจกรรม/การดื่มนม
+              🍼 ดื่มนม/เด็ก
             </button>
           </div>
 
+          <!-- Tool 0: AI Scanner -->
+          <div v-if="state.logTab === 'scanner'" class="log-form-panel">
+            <AiHealthScanner @completed="state.logTab = 'vitals'" />
+          </div>
+
           <!-- Tool 1: Vitals Logger -->
-          <div v-if="state.logTab === 'vitals'" class="log-form-panel">
+          <div v-else-if="state.logTab === 'vitals'" class="log-form-panel">
             <div class="form-grid-2">
               <div class="form-group">
                 <label class="form-label">{{ t('bloodPressure') }}</label>
@@ -380,6 +392,7 @@
 <script setup>
 import { ref, computed, nextTick } from 'vue';
 import { store } from '../stores/useAppStore.js';
+import AiHealthScanner from '../components/health/AiHealthScanner.vue';
 import { 
   Power, 
   Wallet, 
@@ -390,6 +403,7 @@ import {
   Check, 
   Phone, 
   Activity, 
+  Camera,
   FileCheck, 
   Baby, 
   ClipboardList, 

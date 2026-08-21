@@ -27,6 +27,15 @@
 
       <button 
         class="desktop-nav-item" 
+        :class="{ active: state.customerView === 'ai-health' || state.bottomNavTab === 'health' }" 
+        @click="navigate('health')"
+      >
+        <Activity :size="16" class="text-cyan" />
+        <span>สุขภาพ AI</span>
+      </button>
+
+      <button 
+        class="desktop-nav-item" 
         :class="{ active: state.bottomNavTab === 'care' }" 
         @click="navigate('care')"
       >
@@ -122,6 +131,7 @@ import {
   Smartphone,
   Maximize2,
   Home,
+  Activity,
   ClipboardList,
   MapPin,
   MessageSquare,
@@ -155,12 +165,18 @@ const navigate = (tab) => {
   if (state.role === 'customer') {
     if (tab === 'home') {
       state.customerView = 'services';
+    } else if (tab === 'health') {
+      state.customerView = 'ai-health';
     } else {
       state.customerView = 'dashboard';
       setTimeout(() => {
         const el = document.getElementById(tab + '-section');
         if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 100);
+    }
+  } else {
+    if (tab === 'health') {
+      state.customerView = 'ai-health';
     }
   }
 };

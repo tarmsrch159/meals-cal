@@ -14,8 +14,11 @@
 
         <!-- Logged in: Render depending on Role and Bottom Nav Tab -->
         <template v-else>
+          <!-- Dedicated AI Health Intelligence View -->
+          <AiHealthView v-if="state.customerView === 'ai-health'" />
+
           <!-- Customer View -->
-          <CustomerView v-if="state.role === 'customer'" />
+          <CustomerView v-else-if="state.role === 'customer'" />
 
           <!-- Provider / Caregiver View -->
           <ProviderView v-else />
@@ -29,6 +32,7 @@
       <SosModal />
       <BookingModal />
       <AddTaskModal />
+      <AiHealthChatModal />
     </div>
   </div>
 </template>
@@ -41,9 +45,11 @@ import ToastMessage from './components/ToastMessage.vue';
 import SosModal from './components/SosModal.vue';
 import BookingModal from './components/BookingModal.vue';
 import AddTaskModal from './components/AddTaskModal.vue';
+import AiHealthChatModal from './components/health/AiHealthChatModal.vue';
 import AuthView from './views/AuthView.vue';
 import CustomerView from './views/CustomerView.vue';
 import ProviderView from './views/ProviderView.vue';
+import AiHealthView from './views/AiHealthView.vue';
 
 const { state } = store;
 </script>
