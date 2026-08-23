@@ -61,9 +61,98 @@
         </button>
       </div>
 
+      <!-- Quick Sub-Tabs: All / Favorites / Recent -->
+      <div class="search-sub-tabs" v-if="!searchQuery">
+        <button 
+          type="button" 
+          class="btn-sub-tab" 
+          :class="{ active: activeSubTab === 'all' }"
+          @click="activeSubTab = 'all'"
+        >
+          🔍 แนะนำ
+        </button>
+        <button 
+          type="button" 
+          class="btn-sub-tab" 
+          :class="{ active: activeSubTab === 'favorites' }"
+          @click="activeSubTab = 'favorites'"
+        >
+          ⭐ เมนูโปรด ({{ state.favorites.length }})
+        </button>
+        <button 
+          type="button" 
+          class="btn-sub-tab" 
+          :class="{ active: activeSubTab === 'recent' }"
+          @click="activeSubTab = 'recent'"
+        >
+          🕒 ล่าสุด
+        </button>
+      </div>
+
       <div class="modal-scroll-area">
+        <!-- Favorites Tab List -->
+        <div class="favorites-tab-view" v-if="!searchQuery && activeSubTab === 'favorites'">
+          <h3 class="section-label">⭐ เมนูโปรดที่บันทึกไว้</h3>
+          <div class="fav-items-grid" v-if="state.favorites.length > 0">
+            <div 
+              v-for="fav in state.favorites" 
+              :key="fav.id"
+              class="fav-food-card"
+            >
+              <div class="fav-card-main">
+                <div class="fav-title-row">
+                  <h4 class="fav-name">{{ fav.name }}</h4>
+                  <span class="fav-cal font-num">{{ fav.calories }} kcal</span>
+                </div>
+                <div class="fav-macros font-num">
+                  <span class="m-tag pro font-num">P: {{ fav.protein }}g</span>
+                  <span class="m-tag carb font-num">C: {{ fav.carbs }}g</span>
+                  <span class="m-tag fat font-num">F: {{ fav.fat }}g</span>
+                </div>
+              </div>
+              <div class="fav-actions">
+                <button 
+                  type="button" 
+                  class="btn-quick-add-fav" 
+                  @click="addFoodToMeal(fav)"
+                  title="เพิ่มลงมื้ออาหาร"
+                >
+                  + เพิ่ม
+                </button>
+                <button 
+                  type="button" 
+                  class="btn-unfav" 
+                  @click="calorieStore.toggleFavorite(fav)"
+                  title="นำออกจากเมนูโปรด"
+                >
+                  ★
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="empty-fav-hint" v-else>
+            <p>ยังไม่มีเมนูโปรด กดที่ไอคอนดาว ⭐ ในการ์ดมื้ออาหารเพื่อบันทึกเมนูที่กินประจำไว้ที่นี่ได้เลย!</p>
+          </div>
+        </div>
+
+        <!-- Recent Searches Tab View -->
+        <div class="recent-tab-view" v-if="!searchQuery && activeSubTab === 'recent'">
+          <h3 class="section-label">🕒 ประวัติค้นหาล่าสุด</h3>
+          <div class="recent-chips-wrap">
+            <button 
+              v-for="term in state.recentSearches" 
+              :key="term"
+              type="button"
+              class="btn-recent-term"
+              @click="applyRecentSearch(term)"
+            >
+              <span>{{ term }}</span>
+            </button>
+          </div>
+        </div>
+
         <!-- 1. "แนะนำสำหรับคุณ" (Recommended Foods Carousel / Grid) -->
-        <div class="recommend-section" v-if="!searchQuery">
+        <div class="recommend-section" v-if="!searchQuery && activeSubTab === 'all'">
           <h3 class="section-label">แนะนำสำหรับคุณ</h3>
           <div class="recommend-cards-scroll">
             <div 
@@ -249,8 +338,13 @@ import { estimateNutritionWithGemini } from '../../services/nutritionApi.js';
 const searchInputRef = ref(null);
 const targetMeal = ref(state.selectedMealType || 'breakfast');
 const searchQuery = ref('');
+const activeSubTab = ref('all'); // 'all' | 'favorites' | 'recent'
 const isSearchingAI = ref(false);
 const aiResult = ref(null);
+
+function applyRecentSearch(term) {
+  searchQuery.value = term;
+}
 
 const mealSlots = [
   { id: 'breakfast', name: 'เช้า' },
@@ -552,6 +646,160 @@ function closeModal() {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* Search Sub-Tabs */
+.search-sub-tabs {
+  display: flex;
+  gap: 0.35rem;
+  padding: 0.2rem 1.4rem 0.5rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.btn-sub-tab {
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-sub-tab.active {
+  background: var(--primary-light, #EBF3F0);
+  border-color: var(--primary-forest, #154238);
+  color: var(--primary-forest, #154238);
+}
+
+/* Favorites Tab View */
+.favorites-tab-view, .recent-tab-view {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.fav-items-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.fav-food-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 0.75rem 0.9rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.6rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+}
+
+.fav-card-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.fav-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.fav-name {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+}
+
+.fav-cal {
+  font-size: 0.84rem;
+  font-weight: 800;
+  color: #7e22ce;
+}
+
+.fav-macros {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.fav-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.btn-quick-add-fav {
+  background: var(--primary-forest, #154238);
+  color: #ffffff;
+  border: none;
+  padding: 0.4rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-quick-add-fav:hover {
+  background: var(--primary-dark, #0D281E);
+}
+
+.btn-unfav {
+  background: #fef3c7;
+  color: #d97706;
+  border: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.empty-fav-hint {
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 14px;
+  padding: 1.2rem;
+  text-align: center;
+  font-size: 0.8rem;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+/* Recent Chips Wrap */
+.recent-chips-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.btn-recent-term {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  padding: 0.4rem 0.8rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-recent-term:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
 }
 
 /* Scroll Area */

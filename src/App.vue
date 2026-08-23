@@ -83,6 +83,10 @@ import CalorieDashboard from './views/CalorieDashboard.vue';
   padding: 0;
   font-family: var(--font-thai);
   -webkit-tap-highlight-color: transparent;
+  word-break: break-word;
+  line-break: loose;
+  -webkit-hyphens: auto;
+  hyphens: auto;
 }
 
 body {
@@ -94,6 +98,8 @@ body {
   min-height: 100vh;
   margin: 0;
   padding: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .app-root {
@@ -112,6 +118,8 @@ body {
 /* Number font utility */
 .font-num {
   font-family: var(--font-num) !important;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.2px;
 }
 
 /* Global Toast */

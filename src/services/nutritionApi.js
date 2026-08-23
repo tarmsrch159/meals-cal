@@ -30,13 +30,21 @@ export async function estimateNutritionWithGemini(query) {
   const cleanQuery = query.trim();
   const apiKey = getGeminiApiKey();
 
-  // If no valid API key or key is mock, use smart local Thai DB estimation directly
-  if (!apiKey || apiKey.startsWith('AQ.')) {
+  // If no valid API key, use smart local Thai DB estimation directly
+  if (!apiKey || apiKey.includes('your_gemini_api_key')) {
     return fallbackLocalEstimate(cleanQuery);
   }
 
   // Active production models from Google AI
-  const models = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-8b'];
+  const models = [
+    'gemini-3.5-flash',
+    'gemini-flash-lite-latest',
+    'gemini-3.5-flash-lite',
+    'gemini-2.5-flash',
+    'gemini-flash-latest',
+    'gemini-3.7-flash',
+    'gemini-pro-latest'
+  ];
   let lastError = null;
 
   const prompt = `คุณคือนักโภชนาการผู้เชี่ยวชาญอาหารไทยและอาหารสากล 
@@ -60,7 +68,7 @@ export async function estimateNutritionWithGemini(query) {
 
   for (const model of models) {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 6000); // 6s fast timeout
+    const timeoutId = setTimeout(() => controller.abort(), 7000); // 7s fast timeout
 
     try {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
@@ -90,12 +98,13 @@ export async function estimateNutritionWithGemini(query) {
       }
 
       const data = await response.json();
-      const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      const parts = data?.candidates?.[0]?.content?.parts || [];
+      const rawText = parts.filter(p => !p.thought && p.text).map(p => p.text).join('\n') || parts[parts.length - 1]?.text;
       if (!rawText) {
         throw new Error('ไม่พบข้อมูลตอบกลับจาก AI');
       }
 
-      const cleanJsonStr = rawText.replace(/```json\n?|\n?```/g, '').trim();
+      const cleanJsonStr = rawText.replace(/```json\n?|```/g, '').trim();
       const parsed = JSON.parse(cleanJsonStr);
 
       return {
@@ -200,7 +209,7 @@ export async function analyzeFoodPhotoWithGemini(base64Data, mimeType = 'image/j
   }
 
   const apiKey = getGeminiApiKey();
-  if (!apiKey || apiKey.startsWith('AQ.')) {
+  if (!apiKey || apiKey.includes('your_gemini_api_key')) {
     // If no real key, provide realistic demo analysis
     await new Promise(r => setTimeout(r, 600));
     return {
@@ -221,7 +230,15 @@ export async function analyzeFoodPhotoWithGemini(base64Data, mimeType = 'image/j
     };
   }
 
-  const models = ['gemini-2.0-flash', 'gemini-1.5-flash'];
+  const models = [
+    'gemini-3.5-flash',
+    'gemini-flash-lite-latest',
+    'gemini-3.5-flash-lite',
+    'gemini-2.5-flash',
+    'gemini-flash-latest',
+    'gemini-3.7-flash',
+    'gemini-pro-latest'
+  ];
   let lastError = null;
 
   const prompt = `คุณคือนักโภชนาการและ AI ตรวจจับอาหารไทยจากรูปถ่าย
@@ -244,7 +261,7 @@ export async function analyzeFoodPhotoWithGemini(base64Data, mimeType = 'image/j
 
   for (const model of models) {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s timeout
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
 
     try {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
@@ -281,10 +298,11 @@ export async function analyzeFoodPhotoWithGemini(base64Data, mimeType = 'image/j
       }
 
       const data = await response.json();
-      const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      const parts = data?.candidates?.[0]?.content?.parts || [];
+      const rawText = parts.filter(p => !p.thought && p.text).map(p => p.text).join('\n') || parts[parts.length - 1]?.text;
       if (!rawText) throw new Error('AI ไม่ได้ส่งผลการวิเคราะห์ภาพ');
 
-      const cleanJson = rawText.replace(/```json\n?|\n?```/g, '').trim();
+      const cleanJson = rawText.replace(/```json\n?|```/g, '').trim();
       const parsed = JSON.parse(cleanJson);
 
       return {
@@ -366,4 +384,202 @@ export async function searchOpenFoodFacts(query) {
   } catch (err) {
     return [];
   }
+}
+
+/**
+ * AI โภชนาการอัจฉริยะ: วิเคราะห์มื้อที่กินไปแล้วในวันนี้ และแนะนำเมนูสำหรับมื้อถัดไปตามโควต้าสารอาหารที่เหลือจริง
+ */
+export async function getAiMealRecommendation({ dailyTotals, targets, remaining, eatenList, nextMealSlot = 'dinner', goal = 'maintain' }) {
+  const apiKey = getGeminiApiKey();
+
+  const eatenText = eatenList && eatenList.length > 0
+    ? eatenList.map(item => `- ${item.name} (${item.calories} kcal, P:${item.protein}g C:${item.carbs}g F:${item.fat}g)`).join('\n')
+    : '(ยังไม่มีการบันทึกอาหารในวันนี้)';
+
+  const models = [
+    'gemini-3.5-flash',
+    'gemini-flash-lite-latest',
+    'gemini-3.5-flash-lite',
+    'gemini-2.5-flash',
+    'gemini-flash-latest',
+    'gemini-3.7-flash',
+    'gemini-pro-latest'
+  ];
+
+  const prompt = `คุณคือนักโภชนาการและ AI ผู้ช่วยวางแผนมื้ออาหารไทยส่วนบุคคล
+เป้าหมายผู้ใช้: ${goal === 'lose' ? 'ลดไขมัน/ลดน้ำหนัก' : goal === 'gain' ? 'เพิ่มกล้ามเนื้อ/เพิ่มน้ำหนัก' : 'รักษาสุขภาพ/รักษาน้ำหนัก'}
+มื้อที่ต้องการแนะนำ: ${nextMealSlot}
+
+สถานะสารอาหารวันนี้:
+- ทานไปแล้ว: ${dailyTotals.calories} / ${targets.calorieTarget} kcal (เหลืออีก ${remaining.calories} kcal)
+- โปรตีน: ${dailyTotals.protein} / ${targets.proteinTarget}g (เหลืออีก ${remaining.protein}g)
+- คาร์บ: ${dailyTotals.carbs} / ${targets.carbsTarget}g (เหลืออีก ${remaining.carbs}g)
+- ไขมัน: ${dailyTotals.fat} / ${targets.fatTarget}g (เหลืออีก ${remaining.fat}g)
+
+รายการที่ทานไปแล้ววันนี้:
+${eatenText}
+
+จงวิเคราะห์ภาพรวมโภชนาการวันนี้ ให้คะแนนสุขภาพ (1-100) และแนะนำ 3 เมนูอาหารไทยสำหรับ "${nextMealSlot}" ที่เหมาะกับโควต้าแคลอรี่และสารอาหารที่เหลือที่สุด
+
+ตอบกลับเป็น JSON Object รูปแบบนี้เท่านั้น (ห้ามใส่ Markdown อื่นนอกเหนือจาก JSON):
+{
+  "healthScore": 88,
+  "dailyAnalysis": "สรุปสั้นๆ 1-2 ประโยคถึงสารอาหารที่ทานไปแล้ว เช่น วันนี้โปรตีนยังขาดอีกนิด แต่คุมคาร์บได้ดีมาก",
+  "nutritionTip": "คำแนะนำโภชนาการ 1 ประโยคสำหรับมื้อถัดไป",
+  "recommendations": [
+    {
+      "name": "ชื่อเมนูไทย 1",
+      "nameEn": "English Name 1",
+      "calories": 350,
+      "protein": 28,
+      "carbs": 30,
+      "fat": 8,
+      "fiber": 3,
+      "sodium": 650,
+      "servingSize": "1 จาน",
+      "reason": "เหตุผลที่แนะนำเมนูนี้ เช่น ให้โปรตีนสูง ไขมันต่ำ เหมาะกับโควต้าที่เหลือ"
+    },
+    {
+      "name": "ชื่อเมนูไทย 2",
+      "nameEn": "English Name 2",
+      "calories": 280,
+      "protein": 25,
+      "carbs": 20,
+      "fat": 6,
+      "fiber": 4,
+      "sodium": 550,
+      "servingSize": "1 ชาม",
+      "reason": "..."
+    },
+    {
+      "name": "ชื่อเมนูไทย 3",
+      "nameEn": "English Name 3",
+      "calories": 220,
+      "protein": 22,
+      "carbs": 15,
+      "fat": 4,
+      "fiber": 5,
+      "sodium": 500,
+      "servingSize": "1 จาน",
+      "reason": "..."
+    }
+  ]
+}`;
+
+  if (apiKey && !apiKey.includes('your_gemini_api_key')) {
+    for (const model of models) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 9000);
+
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+              responseMimeType: 'application/json',
+              temperature: 0.3
+            }
+          })
+        });
+
+        clearTimeout(timeoutId);
+
+        if (response.ok) {
+          const data = await response.json();
+          const parts = data?.candidates?.[0]?.content?.parts || [];
+          const rawText = parts.filter(p => !p.thought && p.text).map(p => p.text).join('\n') || parts[parts.length - 1]?.text;
+          if (rawText) {
+            const cleanJson = rawText.replace(/```json\n?|```/g, '').trim();
+            const parsed = JSON.parse(cleanJson);
+            if (parsed.recommendations && parsed.recommendations.length > 0) {
+              return {
+                ...parsed,
+                source: `Gemini AI (${model})`
+              };
+            }
+          }
+        }
+      } catch (err) {
+        clearTimeout(timeoutId);
+        console.warn(`AI Coach model ${model} failed:`, err.message);
+      }
+    }
+  }
+
+  // Smart Local Fallback based on remaining macros
+  return fallbackLocalCoach({ dailyTotals, targets, remaining, nextMealSlot });
+}
+
+/**
+ * Local AI Coach fallback engine using Thai Food DB
+ */
+function fallbackLocalCoach({ dailyTotals, targets, remaining, nextMealSlot }) {
+  const remCal = Math.max(150, remaining.calories || 400);
+  const needProtein = (remaining.protein || 0) > 20;
+
+  let score = 85;
+  let analysis = 'สารอาหารวันนี้กระจายตัวได้ดี พลังงานรวมอยู่ในเกณฑ์ที่เหมาะสม';
+  let tip = 'เลือกมื้อถัดไปที่เน้นผักและโปรตีนไขมันต่ำเพื่อสุขภาพที่ดี';
+
+  if (remaining.calories < 0) {
+    score = 72;
+    analysis = `วันนี้พลังงานรวมเกินเป้าหมายไป ${Math.abs(remaining.calories)} kcal`;
+    tip = 'แนะนำเลือกเมนูน้ำใส ต้ม นึ่ง หรือสลัดผักไขมันต่ำเพื่อรักษาสมดุล';
+  } else if (needProtein) {
+    score = 82;
+    analysis = `พลังงานยังเหลืออีก ${remCal} kcal และยังต้องการโปรตีนเพิ่มอีก ${Math.round(remaining.protein)}g`;
+    tip = 'แนะนำเลือกอาหารที่มีอกไก่ ไข่ขาว ปลา หรือเต้าหู้เป็นหลัก';
+  }
+
+  // Pick top 3 suitable meals from local database
+  const recs = [
+    {
+      name: needProtein ? 'สุกี้น้ำรวมมิตร (ไม่ใส่วุ้นเส้น)' : 'ต้มยำกุ้งน้ำใส + ข้าวสวย',
+      nameEn: needProtein ? 'Mixed Sukiyaki Soup' : 'Tom Yum Soup with Rice',
+      calories: Math.min(remCal, 280),
+      protein: 26,
+      carbs: 22,
+      fat: 6,
+      fiber: 4,
+      sodium: 750,
+      servingSize: '1 ชาม',
+      reason: needProtein ? 'โปรตีนสูง แคลอรี่ต่ำ ผักเยอะอิ่มท้องนาน' : 'แคลอรี่พอเหมาะ ไขมันต่ำ ย่อยง่าย'
+    },
+    {
+      name: 'อกไก่ย่างสมุนไพร + สลัดผักน้ำใส',
+      nameEn: 'Grilled Herb Chicken with Salad',
+      calories: Math.min(remCal, 240),
+      protein: 32,
+      carbs: 12,
+      fat: 5,
+      fiber: 3.5,
+      sodium: 520,
+      servingSize: '1 จาน',
+      reason: 'โปรตีนเน้นๆ ซ่อมแซมกล้ามเนื้อและอยู่ท้องโดยไม่เพิ่มคาร์โบไฮเดรต'
+    },
+    {
+      name: 'ปลากะพงนึ่งมะนาว',
+      nameEn: 'Steamed Sea Bass with Lime & Chili',
+      calories: Math.min(remCal, 210),
+      protein: 28,
+      carbs: 8,
+      fat: 4,
+      fiber: 1.5,
+      sodium: 680,
+      servingSize: '1 ที่ (200g)',
+      reason: 'ปลาเนื้อขาวไขมันดี ย่อยง่าย เหมาะสำหรับมื้อเย็น'
+    }
+  ];
+
+  return {
+    healthScore: score,
+    dailyAnalysis: analysis,
+    nutritionTip: tip,
+    recommendations: recs,
+    source: 'ระบบโภชนาการอัจฉริยะ'
+  };
 }

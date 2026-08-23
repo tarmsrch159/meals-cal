@@ -139,6 +139,17 @@
               <span class="item-cal-unit">kcal</span>
             </div>
 
+            <!-- Favorite Toggle Button -->
+            <button 
+              type="button" 
+              class="btn-fav-item" 
+              :class="{ active: calorieStore.isFavorite(item.name) }"
+              @click.stop="calorieStore.toggleFavorite(item)" 
+              :title="calorieStore.isFavorite(item.name) ? 'นำออกจากเมนูโปรด' : 'บันทึกเป็นเมนูโปรด'"
+            >
+              {{ calorieStore.isFavorite(item.name) ? '★' : '☆' }}
+            </button>
+
             <!-- Delete Item Button -->
             <button 
               type="button" 
@@ -159,7 +170,7 @@
           class="btn-action-primary" 
           @click.stop="openSearch"
         >
-          <span>ค้นหา & เพิ่มอาหาร</span>
+          <span>+ เพิ่มอาหาร</span>
         </button>
 
         <button 
@@ -168,7 +179,7 @@
           @click.stop="openScanner"
           title="สแกนรูปภาพอาหารด้วย AI"
         >
-          <span>AI สแกนรูป</span>
+          <span>AI สแกน</span>
         </button>
 
         <button 
@@ -643,6 +654,27 @@ function handleClearMeal() {
   margin-left: 2px;
 }
 
+.btn-fav-item {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: #F1F5F9;
+  color: #94A3B8;
+  font-size: 1rem;
+  line-height: 1;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.btn-fav-item.active {
+  background: #FEF3C7;
+  color: #D97706;
+}
+
 .btn-remove-item {
   width: 24px;
   height: 24px;
@@ -653,6 +685,10 @@ function handleClearMeal() {
   font-weight: 700;
   border-radius: 6px;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
 }
 
 /* Action Buttons Footer */

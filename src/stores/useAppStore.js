@@ -707,11 +707,13 @@ ${healthSummary}
 
     // List of active Google Gemini model endpoints
     const models = [
+      'gemini-3.5-flash',
+      'gemini-flash-lite-latest',
+      'gemini-3.5-flash-lite',
       'gemini-2.5-flash',
       'gemini-flash-latest',
-      'gemini-2.5-flash-lite',
       'gemini-3.7-flash',
-      'gemini-2.5-pro'
+      'gemini-pro-latest'
     ];
 
     for (const model of models) {
@@ -806,30 +808,46 @@ ${healthSummary}
   "doctorRecommendation": "สรุปคำแนะนำทางการแพทย์จากใบตรวจ"
 }`;
 
-          const visionResp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey.trim()}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{
-                parts: [
-                  { text: prompt },
-                  { inlineData: { mimeType: file.type, data: base64Data } }
-                ]
-              }],
-              generationConfig: { temperature: 0.1 }
-            })
-          });
+          const visionModels = [
+            'gemini-3.5-flash',
+            'gemini-flash-lite-latest',
+            'gemini-3.5-flash-lite',
+            'gemini-2.5-flash',
+            'gemini-flash-latest',
+            'gemini-3.7-flash',
+            'gemini-pro-latest'
+          ];
 
-          if (visionResp.ok) {
-            const visionData = await visionResp.json();
-            const parts = visionData.candidates?.[0]?.content?.parts || [];
-            let rawText = parts.filter(p => !p.thought && p.text).map(p => p.text).join('\n') || parts[0]?.text || '';
-            rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-            const parsedLab = JSON.parse(rawText);
-            state.healthData = parsedLab;
-            localStorage.setItem(HEALTH_STORAGE_KEY, JSON.stringify(parsedLab));
-            state.healthMonth = 'latest';
-            return parsedLab;
+          for (const model of visionModels) {
+            try {
+              const visionResp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey.trim()}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  contents: [{
+                    parts: [
+                      { text: prompt },
+                      { inlineData: { mimeType: file.type, data: base64Data } }
+                    ]
+                  }],
+                  generationConfig: { temperature: 0.1 }
+                })
+              });
+
+              if (visionResp.ok) {
+                const visionData = await visionResp.json();
+                const parts = visionData.candidates?.[0]?.content?.parts || [];
+                let rawText = parts.filter(p => !p.thought && p.text).map(p => p.text).join('\n') || parts[0]?.text || '';
+                rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+                const parsedLab = JSON.parse(rawText);
+                state.healthData = parsedLab;
+                localStorage.setItem(HEALTH_STORAGE_KEY, JSON.stringify(parsedLab));
+                state.healthMonth = 'latest';
+                return parsedLab;
+              }
+            } catch (mErr) {
+              console.warn(`Vision model ${model} failed:`, mErr);
+            }
           }
         } catch (visionErr) {
           console.warn('Gemini Vision OCR fallback:', visionErr);

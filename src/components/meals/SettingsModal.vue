@@ -23,7 +23,7 @@
             <input 
               :type="showKey ? 'text' : 'password'" 
               v-model="apiKeyInput" 
-              placeholder="ใส่ Gemini API Key (เริ่มต้นด้วย AIzaSy...)" 
+              placeholder="ใส่ Gemini API Key (เช่น AQ... หรือ AIzaSy...)" 
               class="key-input"
             />
             <button type="button" class="btn-toggle-key font-num" @click="showKey = !showKey">
@@ -37,7 +37,7 @@
             <ol class="guide-steps">
               <li>เข้าเว็บ <a href="https://aistudio.google.com/" target="_blank" class="guide-link">aistudio.google.com</a> แล้วล็อกอินด้วย Google Account</li>
               <li>กดปุ่ม <strong>"Get API key"</strong> และกด <strong>"Create API key"</strong></li>
-              <li>คัดลอก Key ที่ขึ้นต้นด้วย <code>AIzaSy...</code> มาวางในช่องด้านบน</li>
+              <li>คัดลอก Key มาวางในช่องด้านบน</li>
             </ol>
           </div>
 
@@ -172,12 +172,12 @@ async function testApiKeyStepByStep() {
     return;
   }
 
-  const isAiStudioFormat = key.startsWith('AIzaSy');
+  const isAiStudioFormat = key.startsWith('AIzaSy') || key.startsWith('AQ.') || key.length > 20;
   steps.push({
     ok: isAiStudioFormat,
     text: isAiStudioFormat 
-      ? 'ขั้นที่ 1: รูปแบบ Key ถูกต้อง (ขึ้นต้นด้วย AIzaSy...)' 
-      : 'ขั้นที่ 1: รูปแบบ Key อาจไม่ใช่ของ Google AI Studio (โดยทั่วไปจะขึ้นต้นด้วย AIzaSy...)'
+      ? 'ขั้นที่ 1: รูปแบบ Key ถูกต้อง' 
+      : 'ขั้นที่ 1: ตรวจสอบความถูกต้องของ API Key'
   });
 
   // Temporarily set key for test

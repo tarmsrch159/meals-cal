@@ -14,6 +14,32 @@
           <button 
             type="button" 
             class="btn-header-bubble" 
+            @click="calorieStore.openAnalyticsModal"
+            title="สถิติ & กราฟ 7 วัน"
+          >
+            <!-- Minimal Chart SVG -->
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 3v18h18"/>
+              <path d="M18 17V9"/>
+              <path d="M13 17V5"/>
+              <path d="M8 17v-3"/>
+            </svg>
+          </button>
+          <button 
+            type="button" 
+            class="btn-header-bubble" 
+            @click="calorieStore.copyDailySummaryToClipboard()"
+            title="คัดลอกสรุปโภชนาการประจำวัน"
+          >
+            <!-- Minimal Share/Clipboard SVG -->
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+          </button>
+          <button 
+            type="button" 
+            class="btn-header-bubble" 
             @click="calorieStore.openBmrCalcModal"
             title="คำนวณ BMR / TDEE"
           >
@@ -78,275 +104,326 @@
           ›
         </button>
       </div>
+
+      <!-- Top Segmented Navigation Pills -->
+      <div class="top-nav-pills-bar">
+        <button 
+          type="button" 
+          class="btn-top-pill" 
+          :class="{ active: state.activeTab === 'diary' }"
+          @click="calorieStore.setActiveTab('diary')"
+        >
+          <span>🏠 ไดอารี่</span>
+        </button>
+        <button 
+          type="button" 
+          class="btn-top-pill" 
+          :class="{ active: state.activeTab === 'coach' }"
+          @click="calorieStore.setActiveTab('coach')"
+        >
+          <span>✨ AI โค้ช</span>
+        </button>
+        <button 
+          type="button" 
+          class="btn-top-pill" 
+          :class="{ active: state.activeTab === 'analytics' }"
+          @click="calorieStore.setActiveTab('analytics')"
+        >
+          <span>📊 สถิติ</span>
+        </button>
+        <button 
+          type="button" 
+          class="btn-top-pill" 
+          :class="{ active: state.activeTab === 'profile' }"
+          @click="calorieStore.setActiveTab('profile')"
+        >
+          <span>👤 เป้าหมาย</span>
+        </button>
+      </div>
     </header>
 
     <!-- Main Content Container Overlapping Header -->
     <div class="main-body-container">
-      <!-- 1. Main Calorie Summary Card (Pure White with Neon Lime Ring) -->
-      <section class="calorie-hero-card">
-        <div class="hero-card-top">
-          <div class="hero-kcal-info">
-            <span class="hero-card-label">แคลอรี่รวมวันนี้</span>
-            <div class="hero-kcal-display font-num">
-              <span class="eaten-highlight font-num">{{ dailyTotals.calories.toLocaleString() }}</span>
-              <span class="target-slash font-num">/ {{ (state.userProfile.calorieTarget || 2000).toLocaleString() }} kcal</span>
-            </div>
-          </div>
-
-          <!-- Circular Gauge Ring (Neon Lime) -->
-          <div class="gauge-ring-wrap">
-            <svg class="gauge-svg" viewBox="0 0 100 100">
-              <circle
-                class="gauge-bg"
-                cx="50"
-                cy="50"
-                r="42"
-              />
-              <circle
-                class="gauge-fill"
-                cx="50"
-                cy="50"
-                r="42"
-                :stroke-dasharray="ringCircumference"
-                :stroke-dashoffset="ringStrokeDashoffset"
-                :class="calorieProgressClass"
-              />
-            </svg>
-            <div class="gauge-center-val font-num">
-              <span class="percent-num font-num">{{ caloriePercent }}%</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Target Remaining Pill Banner -->
-        <div class="target-remaining-badge" :class="{ 'is-over': remainingCalories < 0 }">
-          <span class="bullet-dot">•</span>
-          <span v-if="remainingCalories >= 0">
-            เหลืออีก <strong>{{ remainingCalories.toLocaleString() }} kcal</strong> เพื่อเป้าหมายของคุณ
-          </span>
-          <span v-else>
-            เกินเป้าหมาย <strong>{{ Math.abs(remainingCalories).toLocaleString() }} kcal</strong>
-          </span>
-        </div>
-
-        <!-- 3 Macro Progress Bars (Carb, Protein, Fat) -->
-        <div class="macro-bars-grid">
-          <!-- Carb -->
-          <div class="macro-col">
-            <div class="macro-label-row">
-              <span class="macro-name carb">คาร์โบไฮเดรต</span>
-              <span class="macro-val font-num">{{ dailyTotals.carbs.toFixed(0) }} / {{ state.userProfile.carbsTarget || 230 }}g</span>
-            </div>
-            <div class="track-bar">
-              <div 
-                class="fill-bar carb"
-                :style="{ width: `${Math.min(100, (dailyTotals.carbs / (state.userProfile.carbsTarget || 1)) * 100)}%` }"
-              ></div>
-            </div>
-          </div>
-
-          <!-- Protein -->
-          <div class="macro-col">
-            <div class="macro-label-row">
-              <span class="macro-name pro">โปรตีน</span>
-              <span class="macro-val font-num">{{ dailyTotals.protein.toFixed(0) }} / {{ state.userProfile.proteinTarget || 120 }}g</span>
-            </div>
-            <div class="track-bar">
-              <div 
-                class="fill-bar pro"
-                :style="{ width: `${Math.min(100, (dailyTotals.protein / (state.userProfile.proteinTarget || 1)) * 100)}%` }"
-              ></div>
-            </div>
-          </div>
-
-          <!-- Fat -->
-          <div class="macro-col">
-            <div class="macro-label-row">
-              <span class="macro-name fat">ไขมัน</span>
-              <span class="macro-val font-num">{{ dailyTotals.fat.toFixed(0) }} / {{ state.userProfile.fatTarget || 55 }}g</span>
-            </div>
-            <div class="track-bar">
-              <div 
-                class="fill-bar fat"
-                :style="{ width: `${Math.min(100, (dailyTotals.fat / (state.userProfile.fatTarget || 1)) * 100)}%` }"
-              ></div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- 2. Meals Section ("มื้ออาหารวันนี้") -->
-      <section class="meals-list-section">
-        <div class="section-title-row">
-          <div>
-            <h2 class="section-main-title">มื้ออาหารวันนี้</h2>
-            <span class="section-sub-info">บันทึกทั้งหมด {{ totalItemsCount }} รายการ</span>
-          </div>
-
-          <div class="section-actions-right">
-            <button 
-              type="button" 
-              class="btn-add-meal-pill" 
-              @click="calorieStore.openSearchModal('breakfast')"
-            >
-              <span class="plus-sign">+</span>
-              <span>เพิ่มมื้ออาหาร</span>
-            </button>
-
-            <button 
-              v-if="totalItemsCount > 0"
-              type="button" 
-              class="btn-clear-today-pill" 
-              @click="showClearAllModal = true"
-              title="ล้างอาหารทุกมื้อของวันนี้"
-            >
-              ล้างทั้งหมด
-            </button>
-          </div>
-        </div>
-
-        <!-- 4 Meal Cards Grid -->
-        <div class="meals-cards-stack">
-          <MealCard mealType="breakfast" />
-          <MealCard mealType="lunch" />
-          <MealCard mealType="dinner" />
-          <MealCard mealType="snack" />
-        </div>
-      </section>
-
-      <!-- 3. Detailed Macro Nutrients Breakdown Section ("สารอาหารวันนี้") -->
-      <section class="macro-detail-card">
-        <div class="macro-detail-header">
-          <h3 class="detail-sec-title">สารอาหารวันนี้</h3>
-          <span class="detail-sub-link" @click="calorieStore.openSettingsModal">ปรับเป้าหมาย ›</span>
-        </div>
-
-        <div class="macro-detail-items">
-          <!-- Carb Item -->
-          <div class="macro-detail-row">
-            <div class="m-dot carb"></div>
-            <div class="m-info-col">
-              <span class="m-info-title">คาร์โบไฮเดรต</span>
-              <div class="m-prog-track">
-                <div class="m-prog-fill carb" :style="{ width: `${Math.min(100, (dailyTotals.carbs / (state.userProfile.carbsTarget || 1)) * 100)}%` }"></div>
+      <!-- TAB 1: DIARY (บันทึกอาหาร & สรุปโภชนาการวันนี้) -->
+      <template v-if="state.activeTab === 'diary'">
+        <!-- 1. Main Calorie Summary Card (Pure White with Neon Lime Ring) -->
+        <section class="calorie-hero-card">
+          <div class="hero-card-top">
+            <div class="hero-kcal-info">
+              <span class="hero-card-label">แคลอรี่รวมวันนี้</span>
+              <div class="hero-kcal-display font-num">
+                <span class="eaten-highlight font-num">{{ dailyTotals.calories.toLocaleString() }}</span>
+                <span class="target-slash font-num">/ {{ (state.userProfile.calorieTarget || 2000).toLocaleString() }} kcal</span>
               </div>
             </div>
-            <div class="m-stat-col font-num">
-              <span class="m-stat-nums font-num">{{ dailyTotals.carbs.toFixed(0) }} <small>/ {{ state.userProfile.carbsTarget || 230 }}g</small></span>
-              <span class="m-stat-pct font-num">{{ Math.round((dailyTotals.carbs / (state.userProfile.carbsTarget || 1)) * 100) }}%</span>
-            </div>
-          </div>
 
-          <!-- Protein Item -->
-          <div class="macro-detail-row">
-            <div class="m-dot pro"></div>
-            <div class="m-info-col">
-              <span class="m-info-title">โปรตีน</span>
-              <div class="m-prog-track">
-                <div class="m-prog-fill pro" :style="{ width: `${Math.min(100, (dailyTotals.protein / (state.userProfile.proteinTarget || 1)) * 100)}%` }"></div>
+            <!-- Circular Gauge Ring (Neon Lime) -->
+            <div class="gauge-ring-wrap">
+              <svg class="gauge-svg" viewBox="0 0 100 100">
+                <circle
+                  class="gauge-bg"
+                  cx="50"
+                  cy="50"
+                  r="42"
+                />
+                <circle
+                  class="gauge-fill"
+                  cx="50"
+                  cy="50"
+                  r="42"
+                  :stroke-dasharray="ringCircumference"
+                  :stroke-dashoffset="ringStrokeDashoffset"
+                  :class="calorieProgressClass"
+                />
+              </svg>
+              <div class="gauge-center-val font-num">
+                <span class="percent-num font-num">{{ caloriePercent }}%</span>
               </div>
             </div>
-            <div class="m-stat-col font-num">
-              <span class="m-stat-nums font-num">{{ dailyTotals.protein.toFixed(0) }} <small>/ {{ state.userProfile.proteinTarget || 120 }}g</small></span>
-              <span class="m-stat-pct font-num">{{ Math.round((dailyTotals.protein / (state.userProfile.proteinTarget || 1)) * 100) }}%</span>
-            </div>
           </div>
 
-          <!-- Fat Item -->
-          <div class="macro-detail-row">
-            <div class="m-dot fat"></div>
-            <div class="m-info-col">
-              <span class="m-info-title">ไขมัน</span>
-              <div class="m-prog-track">
-                <div class="m-prog-fill fat" :style="{ width: `${Math.min(100, (dailyTotals.fat / (state.userProfile.fatTarget || 1)) * 100)}%` }"></div>
+          <!-- Target Remaining Pill Banner -->
+          <div class="target-remaining-badge" :class="{ 'is-over': remainingCalories < 0 }">
+            <span class="bullet-dot">•</span>
+            <span v-if="remainingCalories >= 0">
+              เหลืออีก <strong>{{ remainingCalories.toLocaleString() }} kcal</strong>
+            </span>
+            <span v-else>
+              เกินเป้าหมาย <strong>{{ Math.abs(remainingCalories).toLocaleString() }} kcal</strong>
+            </span>
+          </div>
+
+          <!-- 3 Macro Progress Bars (Carb, Protein, Fat) -->
+          <div class="macro-bars-grid">
+            <!-- Carb -->
+            <div class="macro-col">
+              <div class="macro-label-row">
+                <span class="macro-name carb">คาร์บ</span>
+                <span class="macro-val font-num">{{ dailyTotals.carbs.toFixed(0) }}/{{ state.userProfile.carbsTarget || 230 }}g</span>
+              </div>
+              <div class="track-bar">
+                <div 
+                  class="fill-bar carb"
+                  :style="{ width: `${Math.min(100, (dailyTotals.carbs / (state.userProfile.carbsTarget || 1)) * 100)}%` }"
+                ></div>
               </div>
             </div>
-            <div class="m-stat-col font-num">
-              <span class="m-stat-nums font-num">{{ dailyTotals.fat.toFixed(0) }} <small>/ {{ state.userProfile.fatTarget || 55 }}g</small></span>
-              <span class="m-stat-pct font-num">{{ Math.round((dailyTotals.fat / (state.userProfile.fatTarget || 1)) * 100) }}%</span>
+
+            <!-- Protein -->
+            <div class="macro-col">
+              <div class="macro-label-row">
+                <span class="macro-name pro">โปรตีน</span>
+                <span class="macro-val font-num">{{ dailyTotals.protein.toFixed(0) }}/{{ state.userProfile.proteinTarget || 120 }}g</span>
+              </div>
+              <div class="track-bar">
+                <div 
+                  class="fill-bar pro"
+                  :style="{ width: `${Math.min(100, (dailyTotals.protein / (state.userProfile.proteinTarget || 1)) * 100)}%` }"
+                ></div>
+              </div>
+            </div>
+
+            <!-- Fat -->
+            <div class="macro-col">
+              <div class="macro-label-row">
+                <span class="macro-name fat">ไขมัน</span>
+                <span class="macro-val font-num">{{ dailyTotals.fat.toFixed(0) }}/{{ state.userProfile.fatTarget || 55 }}g</span>
+              </div>
+              <div class="track-bar">
+                <div 
+                  class="fill-bar fat"
+                  :style="{ width: `${Math.min(100, (dailyTotals.fat / (state.userProfile.fatTarget || 1)) * 100)}%` }"
+                ></div>
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <!-- 4. Energetic Streak Card -->
-      <section class="streak-banner-card">
-        <div class="streak-left">
-          <div class="flame-neon-badge">
-            <!-- Minimal Flame SVG -->
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 3z"></path>
-            </svg>
-          </div>
-          <div>
-            <span class="streak-title">สถิติบันทึกต่อเนื่อง</span>
-            <div class="streak-days-row font-num">
-              <span class="streak-num font-num">12</span>
-              <span class="streak-unit">วัน</span>
-            </div>
-            <p class="streak-sub">เก่งมาก รักษาโมเมนตัมไว้ให้ดี</p>
-          </div>
-        </div>
-      </section>
-
-      <!-- 5. Motivational Fitness & BMR Banner -->
-      <section class="fitness-action-banner">
-        <div class="fitness-banner-content">
-          <span class="banner-tag">Daily Target</span>
-          <h3 class="banner-quote">ทำวันนี้ให้ดีกว่าเมื่อวาน เพื่อเป้าหมายสุขภาพของคุณ</h3>
-          <button 
-            type="button" 
-            class="btn-fitness-cta" 
-            @click="calorieStore.openBmrCalcModal"
-          >
-            <span>คำนวณ BMR & TDEE</span>
-          </button>
-        </div>
-      </section>
-
-      <!-- 6. Water Tracker Card (Minimalist Water Bar) -->
-      <section class="water-card-energetic">
-        <div class="water-head">
-          <div class="water-left-title">
+        <!-- 2. Meals Section ("มื้ออาหารวันนี้") -->
+        <section class="meals-list-section">
+          <div class="section-title-row">
             <div>
-              <h4 class="water-sec-title">ดื่มน้ำวันนี้</h4>
-              <span class="water-ml-sub font-num">{{ currentWater * 250 }} / {{ (state.userProfile.waterTarget || 8) * 250 }} ml</span>
+              <h2 class="section-main-title">มื้ออาหารวันนี้</h2>
+              <span class="section-sub-info">รวม {{ totalItemsCount }} รายการ</span>
+            </div>
+
+            <div class="section-actions-right">
+              <button 
+                type="button" 
+                class="btn-add-meal-pill" 
+                @click="calorieStore.openSearchModal('breakfast')"
+              >
+                <span class="plus-sign">+</span>
+                <span>เพิ่มอาหาร</span>
+              </button>
+
+              <button 
+                v-if="totalItemsCount > 0"
+                type="button" 
+                class="btn-clear-today-pill" 
+                @click="showClearAllModal = true"
+                title="ล้างอาหารทุกมื้อของวันนี้"
+              >
+                ล้างทั้งหมด
+              </button>
             </div>
           </div>
 
-          <div class="water-stepper">
-            <button 
-              type="button" 
-              class="btn-w-step" 
-              @click="calorieStore.removeWater()"
-              :disabled="currentWater <= 0"
-            >
-              -
-            </button>
-            <span class="w-badge font-num">{{ currentWater }} แก้ว</span>
-            <button 
-              type="button" 
-              class="btn-w-step" 
-              @click="calorieStore.addWater()"
-            >
-              +
-            </button>
+          <!-- 4 Meal Cards Grid -->
+          <div class="meals-cards-stack">
+            <MealCard mealType="breakfast" />
+            <MealCard mealType="lunch" />
+            <MealCard mealType="dinner" />
+            <MealCard mealType="snack" />
           </div>
-        </div>
+        </section>
 
-        <!-- Modern segmented water level bar instead of 8 glass emojis -->
-        <div class="water-segmented-bar">
-          <div 
-            v-for="idx in (state.userProfile.waterTarget || 8)" 
-            :key="idx"
-            class="water-segment"
-            :class="{ filled: idx <= currentWater }"
-            @click="toggleWaterUpTo(idx)"
-            :title="`บันทึกน้ำ ${idx} แก้ว`"
-          ></div>
-        </div>
-      </section>
+        <!-- 3. Detailed Macro Nutrients Breakdown Section ("สารอาหารวันนี้") -->
+        <section class="macro-detail-card">
+          <div class="macro-detail-header">
+            <h3 class="detail-sec-title">สารอาหารวันนี้</h3>
+            <span class="detail-sec-sub font-num">แคลอรี่รวม: {{ dailyTotals.calories.toFixed(0) }} kcal</span>
+          </div>
+
+          <div class="macro-detail-list">
+            <!-- Carb Row -->
+            <div class="macro-detail-row">
+              <div class="m-row-left">
+                <div class="m-color-bullet carb"></div>
+                <div class="m-row-texts">
+                  <span class="m-row-title">คาร์โบไฮเดรต</span>
+                  <span class="m-row-cal-sub font-num">{{ (dailyTotals.carbs * 4).toFixed(0) }} kcal (4 kcal/g)</span>
+                </div>
+              </div>
+              <div class="m-row-middle">
+                <div class="m-prog-track">
+                  <div class="m-prog-fill carb" :style="{ width: `${Math.min(100, (dailyTotals.carbs / (state.userProfile.carbsTarget || 1)) * 100)}%` }"></div>
+                </div>
+              </div>
+              <div class="m-stat-col font-num">
+                <span class="m-stat-nums font-num">{{ dailyTotals.carbs.toFixed(0) }} <small>/ {{ state.userProfile.carbsTarget || 230 }}g</small></span>
+                <span class="m-stat-pct font-num">{{ Math.round((dailyTotals.carbs / (state.userProfile.carbsTarget || 1)) * 100) }}%</span>
+              </div>
+            </div>
+
+            <!-- Protein Row -->
+            <div class="macro-detail-row">
+              <div class="m-row-left">
+                <div class="m-color-bullet pro"></div>
+                <div class="m-row-texts">
+                  <span class="m-row-title">โปรตีน</span>
+                  <span class="m-row-cal-sub font-num">{{ (dailyTotals.protein * 4).toFixed(0) }} kcal (4 kcal/g)</span>
+                </div>
+              </div>
+              <div class="m-row-middle">
+                <div class="m-prog-track">
+                  <div class="m-prog-fill pro" :style="{ width: `${Math.min(100, (dailyTotals.protein / (state.userProfile.proteinTarget || 1)) * 100)}%` }"></div>
+                </div>
+              </div>
+              <div class="m-stat-col font-num">
+                <span class="m-stat-nums font-num">{{ dailyTotals.protein.toFixed(0) }} <small>/ {{ state.userProfile.proteinTarget || 120 }}g</small></span>
+                <span class="m-stat-pct font-num">{{ Math.round((dailyTotals.protein / (state.userProfile.proteinTarget || 1)) * 100) }}%</span>
+              </div>
+            </div>
+
+            <!-- Fat Row -->
+            <div class="macro-detail-row">
+              <div class="m-row-left">
+                <div class="m-color-bullet fat"></div>
+                <div class="m-row-texts">
+                  <span class="m-row-title">ไขมัน</span>
+                  <span class="m-row-cal-sub font-num">{{ (dailyTotals.fat * 9).toFixed(0) }} kcal (9 kcal/g)</span>
+                </div>
+              </div>
+              <div class="m-row-middle">
+                <div class="m-prog-track">
+                  <div class="m-prog-fill fat" :style="{ width: `${Math.min(100, (dailyTotals.fat / (state.userProfile.fatTarget || 1)) * 100)}%` }"></div>
+                </div>
+              </div>
+              <div class="m-stat-col font-num">
+                <span class="m-stat-nums font-num">{{ dailyTotals.fat.toFixed(0) }} <small>/ {{ state.userProfile.fatTarget || 55 }}g</small></span>
+                <span class="m-stat-pct font-num">{{ Math.round((dailyTotals.fat / (state.userProfile.fatTarget || 1)) * 100) }}%</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 4. Water Tracker Card (Minimalist Water Bar) -->
+        <section class="water-card-energetic">
+          <div class="water-head">
+            <div class="water-left-title">
+              <div>
+                <h4 class="water-sec-title">ดื่มน้ำวันนี้</h4>
+                <span class="water-ml-sub font-num">{{ currentWater * 250 }} / {{ (state.userProfile.waterTarget || 8) * 250 }} ml</span>
+              </div>
+            </div>
+
+            <div class="water-stepper">
+              <button 
+                type="button" 
+                class="btn-w-step" 
+                @click="calorieStore.removeWater()"
+                :disabled="currentWater <= 0"
+              >
+                -
+              </button>
+              <span class="w-badge font-num">{{ currentWater }} แก้ว</span>
+              <button 
+                type="button" 
+                class="btn-w-step" 
+                @click="calorieStore.addWater()"
+              >
+                +
+              </button>
+            </div>
+          </div>
+
+          <!-- Modern segmented water level bar -->
+          <div class="water-segmented-bar">
+            <div 
+              v-for="idx in (state.userProfile.waterTarget || 8)" 
+              :key="idx"
+              class="water-segment"
+              :class="{ filled: idx <= currentWater }"
+              @click="toggleWaterUpTo(idx)"
+              :title="`บันทึกน้ำ ${idx} แก้ว`"
+            ></div>
+          </div>
+        </section>
+
+        <!-- 5. Energetic Streak Card -->
+        <section class="streak-banner-card">
+          <div class="streak-left">
+            <div class="flame-neon-badge">
+              <!-- Minimal Flame SVG -->
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 3z"></path>
+              </svg>
+            </div>
+            <div>
+              <span class="streak-title">สถิติบันทึกต่อเนื่อง</span>
+              <div class="streak-days-row font-num">
+                <span class="streak-num font-num">{{ currentStreak }}</span>
+                <span class="streak-unit">วัน</span>
+              </div>
+              <p class="streak-sub">เก่งมาก รักษาโมเมนตัมไว้ให้ดี</p>
+            </div>
+          </div>
+        </section>
+      </template>
+
+      <!-- TAB 2: AI COACH (AI ผู้ช่วยโภชนาการ & Fasting) -->
+      <AiCoachTab v-else-if="state.activeTab === 'coach'" />
+
+      <!-- TAB 3: ANALYTICS (สถิติ & กราฟแนวโน้ม 7 วัน) -->
+      <AnalyticsTab v-else-if="state.activeTab === 'analytics'" />
+
+      <!-- TAB 4: PROFILE & GOALS (เป้าหมาย & จัดการเมนูโปรด) -->
+      <ProfileGoalsTab v-else-if="state.activeTab === 'profile'" />
     </div>
+
+    <!-- Floating Bottom Navigation Bar -->
+    <MealsBottomNav />
 
     <!-- Clear All Meals Confirmation Modal -->
     <div class="confirm-modal-backdrop" v-if="showClearAllModal" @click.self="showClearAllModal = false">
@@ -374,6 +451,7 @@
     <QuickAddModal v-if="state.activeModal === 'quick-add'" />
     <BmrCalculatorModal v-if="state.activeModal === 'bmr-calc'" />
     <SettingsModal v-if="state.activeModal === 'settings'" />
+    <WeeklyAnalyticsModal v-if="state.activeModal === 'analytics'" />
   </div>
 </template>
 
@@ -381,17 +459,23 @@
 import { ref, computed } from 'vue';
 import { calorieStore, state } from '../stores/useCalorieStore.js';
 import MealCard from '../components/meals/MealCard.vue';
+import AiCoachTab from '../components/meals/AiCoachTab.vue';
+import AnalyticsTab from '../components/meals/AnalyticsTab.vue';
+import ProfileGoalsTab from '../components/meals/ProfileGoalsTab.vue';
+import MealsBottomNav from '../components/meals/MealsBottomNav.vue';
 import FoodSearchModal from '../components/meals/FoodSearchModal.vue';
 import FoodScannerModal from '../components/meals/FoodScannerModal.vue';
 import QuickAddModal from '../components/meals/QuickAddModal.vue';
 import BmrCalculatorModal from '../components/meals/BmrCalculatorModal.vue';
 import SettingsModal from '../components/meals/SettingsModal.vue';
+import WeeklyAnalyticsModal from '../components/meals/WeeklyAnalyticsModal.vue';
 
 const showClearAllModal = ref(false);
 
 const dailyTotals = computed(() => calorieStore.getDailyTotals());
 const remainingCalories = computed(() => calorieStore.getRemainingCalories());
 const currentWater = computed(() => calorieStore.getWater());
+const currentStreak = computed(() => calorieStore.calculateStreak());
 
 const totalItemsCount = computed(() => {
   const meals = calorieStore.getMealsForDate();
@@ -423,22 +507,22 @@ const calorieProgressClass = computed(() => {
   return 'is-normal';
 });
 
-// Thai formatted date string
+// Thai formatted date string (Mobile-optimized concise format)
 const formattedDateThai = computed(() => {
   const [y, m, d] = state.selectedDate.split('-').map(Number);
   const dateObj = new Date(y, m - 1, d);
 
   const thaiMonths = [
-    'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
-    'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
+    'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.',
+    'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'
   ];
 
-  const daysOfWeek = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'];
+  const daysOfWeek = ['อา.', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.'];
   const dayName = daysOfWeek[dateObj.getDay()];
   const monthName = thaiMonths[dateObj.getMonth()];
   const thaiYear = y + 543;
 
-  return `${dayName}, ${d} ${monthName} ${thaiYear}`;
+  return `${dayName} ${d} ${monthName} ${thaiYear}`;
 });
 
 function toggleWaterUpTo(targetCount) {
