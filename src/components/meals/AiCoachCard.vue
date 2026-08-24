@@ -41,11 +41,18 @@
     <div class="coach-bubble" v-if="coachData">
       <p class="coach-analysis-text">{{ coachData.dailyAnalysis }}</p>
       <div class="coach-tip-row" v-if="coachData.nutritionTip">
-        <span class="tip-badge">💡 เคล็ดลับ</span>
+        <span class="tip-badge">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:2px;">
+            <path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/>
+            <path d="M9 18h6"/>
+            <path d="M10 22h4"/>
+          </svg>
+          เคล็ดลับ
+        </span>
         <span class="tip-text">{{ coachData.nutritionTip }}</span>
       </div>
       <span class="coach-source-tag font-num" v-if="coachData.source">
-        ⚡ ขับเคลื่อนโดย {{ coachData.source }}
+        ขับเคลื่อนโดย {{ coachData.source }}
       </span>
     </div>
 
@@ -80,7 +87,7 @@
             <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/>
             <path d="M16 21h5v-5"/>
           </svg>
-          <span>{{ coachData ? 'วิเคราะห์ใหม่ & แนะนำเมนู' : '✨ ให้ AI แนะนำมื้อถัดไป' }}</span>
+          <span>{{ coachData ? 'วิเคราะห์ใหม่ & แนะนำเมนู' : 'ให้ AI แนะนำมื้อถัดไป' }}</span>
         </span>
         <span v-else class="loading-state">
           <span class="spinner-dot"></span>

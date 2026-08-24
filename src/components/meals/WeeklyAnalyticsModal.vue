@@ -38,7 +38,7 @@
               <span class="m-unit">kcal</span>
             </div>
             <span class="m-sub">
-              {{ stats.weeklyDeficit >= 0 ? '📉 อยู่ในช่วงลดไขมันสะสม' : '📈 ได้รับพลังงานเกินเป้าหมาย' }}
+              {{ stats.weeklyDeficit >= 0 ? 'อยู่ในช่วงลดไขมันสะสม' : 'ได้รับพลังงานเกินเป้าหมาย' }}
             </span>
           </div>
 
@@ -48,7 +48,12 @@
               <span class="m-num font-num">{{ currentStreak }}</span>
               <span class="m-unit">วัน</span>
             </div>
-            <span class="m-sub">🔥 รักษาโมเมนตัมไว้ให้ดี</span>
+            <span class="m-sub">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#154238" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:2px;">
+                <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 3z"/>
+              </svg>
+              รักษาโมเมนตัมไว้ให้ดี
+            </span>
           </div>
         </div>
 

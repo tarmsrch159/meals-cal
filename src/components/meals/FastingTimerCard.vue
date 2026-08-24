@@ -89,7 +89,11 @@
           class="btn-start-fasting font-num" 
           @click="startFasting"
         >
-          <span>⏱️ เริ่ม Fasting</span>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:4px;">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+          <span>เริ่ม Fasting</span>
         </button>
       </div>
     </div>

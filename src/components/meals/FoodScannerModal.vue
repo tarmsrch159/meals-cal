@@ -179,7 +179,10 @@
               class="btn-confirm-save" 
               @click="saveAnalyzedMeal"
             >
-              ✅ บันทึกลง{{ calorieStore.getMealTypeName(targetMeal) }} ({{ Math.round(analyzedResult.calories * selectedMultiplier) }} kcal)
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:4px;">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+              <span>บันทึกลง{{ calorieStore.getMealTypeName(targetMeal) }} ({{ Math.round(analyzedResult.calories * selectedMultiplier) }} kcal)</span>
             </button>
           </div>
         </div>
@@ -339,11 +342,11 @@ function loadSamplePreset(sample) {
   ctx.textAlign = 'center';
   ctx.fillText(sample.emoji, 200, 140);
 
-  ctx.font = 'bold 22px Kanit, sans-serif';
+  ctx.font = 'bold 22px Prompt, sans-serif';
   ctx.fillStyle = '#0f172a';
   ctx.fillText(sample.name, 200, 200);
 
-  ctx.font = '14px Kanit, sans-serif';
+  ctx.font = '14px Prompt, sans-serif';
   ctx.fillStyle = '#64748b';
   ctx.fillText('ภาพอาหารจำลองสำหรับทดสอบ AI Vision', 200, 235);
 

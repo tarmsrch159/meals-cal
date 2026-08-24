@@ -94,9 +94,6 @@
           <div class="item-info">
             <div class="item-name-wrap">
               <span class="item-name">{{ item.name }}</span>
-              <span class="item-source-badge" v-if="item.source">
-                {{ item.source }}
-              </span>
             </div>
             
             <div class="item-details">
@@ -139,7 +136,7 @@
               <span class="item-cal-unit">kcal</span>
             </div>
 
-            <!-- Favorite Toggle Button -->
+            <!-- Favorite Toggle Button (Clean SVG Star) -->
             <button 
               type="button" 
               class="btn-fav-item" 
@@ -147,17 +144,22 @@
               @click.stop="calorieStore.toggleFavorite(item)" 
               :title="calorieStore.isFavorite(item.name) ? 'นำออกจากเมนูโปรด' : 'บันทึกเป็นเมนูโปรด'"
             >
-              {{ calorieStore.isFavorite(item.name) ? '★' : '☆' }}
+              <svg width="14" height="14" viewBox="0 0 24 24" :fill="calorieStore.isFavorite(item.name) ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+              </svg>
             </button>
 
-            <!-- Delete Item Button -->
+            <!-- Delete Item Button (Clean SVG X) -->
             <button 
               type="button" 
               class="btn-remove-item" 
               @click.stop="removeItem(item.id)" 
               title="ลบรายการนี้"
             >
-              ✕
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 6 6 18"/>
+                <path d="m6 6 12 12"/>
+              </svg>
             </button>
           </div>
         </div>
@@ -170,7 +172,11 @@
           class="btn-action-primary" 
           @click.stop="openSearch"
         >
-          <span>+ เพิ่มอาหาร</span>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"/>
+            <line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          <span>เพิ่มอาหาร</span>
         </button>
 
         <button 
@@ -179,6 +185,10 @@
           @click.stop="openScanner"
           title="สแกนรูปภาพอาหารด้วย AI"
         >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+          </svg>
           <span>AI สแกน</span>
         </button>
 
@@ -188,16 +198,24 @@
           @click.stop="openQuickAdd"
           title="ใส่ข้อมูลเองด่วน"
         >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+          </svg>
           <span>เพิ่มเอง</span>
         </button>
 
         <button 
-          v-if="items.length > 0 && !showClearConfirm"
+          v-if="items.length > 0 && !showClearConfirm" 
           type="button" 
           class="btn-action-clear" 
           @click.stop="showClearConfirm = true"
           title="ล้างมื้อนี้"
         >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6"/>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+          </svg>
           <span>ล้าง</span>
         </button>
       </div>
@@ -576,36 +594,30 @@ function handleClearMeal() {
 }
 
 .item-name {
-  font-size: 0.92rem;
+  font-size: 0.95rem;
   font-weight: 700;
   color: var(--text-main, #0F1E17);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.item-source-badge {
-  font-size: 0.65rem;
-  padding: 1px 5px;
-  border-radius: 4px;
-  background: #E2E8F0;
-  color: #475569;
-  font-weight: 600;
+  line-height: 1.3;
 }
 
 .item-details {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.4rem;
   font-size: 0.72rem;
   color: var(--text-muted, #52665C);
-  margin-top: 1px;
+  margin-top: 2px;
+  flex-wrap: wrap;
 }
 
 .item-actions {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.45rem;
+  flex-shrink: 0;
 }
 
 .multiplier-control {
@@ -639,35 +651,38 @@ function handleClearMeal() {
 
 .item-calories {
   text-align: right;
-  min-width: 50px;
+  min-width: 48px;
 }
 
 .item-cal-num {
-  font-size: 0.98rem;
+  font-size: 0.96rem;
   font-weight: 800;
   color: #0F1E17;
 }
 
 .item-cal-unit {
-  font-size: 0.65rem;
+  font-size: 0.62rem;
   color: #64748B;
   margin-left: 2px;
 }
 
 .btn-fav-item {
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
   border: none;
   background: #F1F5F9;
   color: #94A3B8;
-  font-size: 1rem;
-  line-height: 1;
-  border-radius: 6px;
+  border-radius: 7px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.15s;
+}
+
+.btn-fav-item:hover {
+  background: #FEF3C7;
+  color: #D97706;
 }
 
 .btn-fav-item.active {
@@ -676,40 +691,46 @@ function handleClearMeal() {
 }
 
 .btn-remove-item {
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
   border: none;
   background: #FEE2E2;
   color: #EF4444;
-  font-size: 0.75rem;
-  font-weight: 700;
-  border-radius: 6px;
+  border-radius: 7px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s;
+  transition: all 0.15s;
+}
+
+.btn-remove-item:hover {
+  background: #FECACA;
+  color: #DC2626;
 }
 
 /* Action Buttons Footer */
 .meal-actions-footer {
   display: flex;
   gap: 0.45rem;
+  align-items: stretch;
 }
 
 .btn-action-primary {
-  flex: 1.8;
-  padding: 0.65rem 0.8rem;
+  flex: 1.4;
+  padding: 0.65rem 0.75rem;
   background: var(--primary-forest, #154238);
   color: #FFFFFF;
   border: none;
   border-radius: 12px;
-  font-size: 0.84rem;
+  font-size: 0.82rem;
   font-weight: 700;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 0.35rem;
+  white-space: nowrap;
   box-shadow: 0 4px 12px rgba(21, 66, 56, 0.2);
   transition: all 0.15s;
 }
@@ -721,17 +742,19 @@ function handleClearMeal() {
 
 .btn-action-secondary {
   flex: 1;
-  padding: 0.65rem 0.5rem;
+  padding: 0.65rem 0.55rem;
   background: var(--primary-light, #EBF3F0);
-  border: 1px solid rgba(21, 66, 56, 0.15);
+  border: 1px solid rgba(21, 66, 56, 0.12);
   color: var(--primary-forest, #154238);
   border-radius: 12px;
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   font-weight: 700;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 0.3rem;
+  white-space: nowrap;
   transition: all 0.15s;
 }
 
@@ -741,18 +764,48 @@ function handleClearMeal() {
 }
 
 .btn-action-clear {
-  padding: 0.65rem 0.75rem;
+  padding: 0.65rem 0.7rem;
   background: #FFF1F2;
   border: 1px solid #FECDD3;
   color: #E11D48;
   border-radius: 12px;
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   font-weight: 700;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  white-space: nowrap;
   transition: all 0.15s;
 }
 
 .btn-action-clear:hover {
   background: #FFE4E6;
+}
+
+@media (max-width: 440px) {
+  .meal-actions-footer {
+    display: grid;
+    grid-template-columns: 1.3fr 1fr 1fr auto;
+    gap: 0.35rem;
+  }
+
+  .btn-action-primary {
+    padding: 0.6rem 0.4rem;
+    font-size: 0.76rem;
+    gap: 0.2rem;
+  }
+
+  .btn-action-secondary {
+    padding: 0.6rem 0.35rem;
+    font-size: 0.74rem;
+    gap: 0.2rem;
+  }
+
+  .btn-action-clear {
+    padding: 0.6rem 0.5rem;
+    font-size: 0.74rem;
+  }
 }
 </style>

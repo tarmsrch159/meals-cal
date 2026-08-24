@@ -69,7 +69,11 @@
           :class="{ active: activeSubTab === 'all' }"
           @click="activeSubTab = 'all'"
         >
-          🔍 แนะนำ
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <span>แนะนำ</span>
         </button>
         <button 
           type="button" 
@@ -77,7 +81,10 @@
           :class="{ active: activeSubTab === 'favorites' }"
           @click="activeSubTab = 'favorites'"
         >
-          ⭐ เมนูโปรด ({{ state.favorites.length }})
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+          </svg>
+          <span>เมนูโปรด ({{ state.favorites.length }})</span>
         </button>
         <button 
           type="button" 
@@ -85,18 +92,27 @@
           :class="{ active: activeSubTab === 'recent' }"
           @click="activeSubTab = 'recent'"
         >
-          🕒 ล่าสุด
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+          <span>ล่าสุด</span>
         </button>
       </div>
 
       <div class="modal-scroll-area">
         <!-- Favorites Tab List -->
         <div class="favorites-tab-view" v-if="!searchQuery && activeSubTab === 'favorites'">
-          <h3 class="section-label">⭐ เมนูโปรดที่บันทึกไว้</h3>
+          <h3 class="section-label">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="#D97706" stroke="#D97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:4px;">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+            </svg>
+            <span>เมนูโปรดที่บันทึกไว้</span>
+          </h3>
           <div class="fav-items-grid" v-if="state.favorites.length > 0">
             <div 
               v-for="fav in state.favorites" 
-              :key="fav.id"
+              :key="fav.id" 
               class="fav-food-card"
             >
               <div class="fav-card-main">
@@ -125,13 +141,15 @@
                   @click="calorieStore.toggleFavorite(fav)"
                   title="นำออกจากเมนูโปรด"
                 >
-                  ★
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                  </svg>
                 </button>
               </div>
             </div>
           </div>
           <div class="empty-fav-hint" v-else>
-            <p>ยังไม่มีเมนูโปรด กดที่ไอคอนดาว ⭐ ในการ์ดมื้ออาหารเพื่อบันทึกเมนูที่กินประจำไว้ที่นี่ได้เลย!</p>
+            <p>ยังไม่มีเมนูโปรด กดที่ไอคอนดาวในการ์ดมื้ออาหารเพื่อบันทึกเมนูที่กินประจำไว้ที่นี่ได้เลย</p>
           </div>
         </div>
 

@@ -154,8 +154,11 @@ const defaultState = {
   isLoadingAI: false
 };
 
+let currentTodayStr = getTodayDateString();
+
 // Load initial state from LocalStorage if available
 function loadSavedState() {
+  const today = getTodayDateString();
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
@@ -164,7 +167,7 @@ function loadSavedState() {
         ...defaultState,
         ...parsed,
         activeTab: parsed.activeTab || 'diary',
-        selectedDate: parsed.selectedDate || getTodayDateString(),
+        selectedDate: today, // Always auto-select current date on app load
         mealsByDate: { ...defaultState.mealsByDate, ...(parsed.mealsByDate || {}) },
         waterByDate: { ...defaultState.waterByDate, ...(parsed.waterByDate || {}) },
         userProfile: { ...defaultState.userProfile, ...(parsed.userProfile || {}) },
@@ -176,10 +179,37 @@ function loadSavedState() {
   } catch (e) {
     console.error('Failed to load saved calorie state:', e);
   }
-  return defaultState;
+  return { ...defaultState, selectedDate: today };
 }
 
 export const state = reactive(loadSavedState());
+
+// Check if day has changed (e.g. crossing midnight or waking mobile app)
+export function checkAndSyncNewDay() {
+  const newToday = getTodayDateString();
+  if (newToday !== currentTodayStr) {
+    // If the user was viewing the previous "today", advance to new today
+    if (state.selectedDate === currentTodayStr) {
+      state.selectedDate = newToday;
+    }
+    currentTodayStr = newToday;
+    if (calorieStore && typeof calorieStore.ensureDateEntry === 'function') {
+      calorieStore.ensureDateEntry(newToday);
+    }
+  }
+}
+
+// Attach lifecycle listeners for browser/mobile environment
+if (typeof window !== 'undefined') {
+  window.addEventListener('focus', checkAndSyncNewDay);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      checkAndSyncNewDay();
+    }
+  });
+  // Periodic check every 30 seconds
+  setInterval(checkAndSyncNewDay, 30000);
+}
 
 // Auto-save to LocalStorage on changes
 watch(
@@ -207,6 +237,8 @@ watch(
 // Store Actions & Helper Methods
 export const calorieStore = {
   state,
+  getTodayDateString,
+  checkAndSyncNewDay,
 
   // Tab Navigation
   setActiveTab(tab) {

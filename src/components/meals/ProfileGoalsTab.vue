@@ -67,7 +67,12 @@
     <div class="favorites-section-card">
       <div class="card-head-row">
         <div>
-          <h3 class="card-title">⭐ เมนูโปรดของฉัน ({{ state.favorites.length }})</h3>
+          <h3 class="card-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="#D97706" stroke="#D97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:4px;">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+            </svg>
+            <span>เมนูโปรดของฉัน ({{ state.favorites.length }})</span>
+          </h3>
           <span class="card-sub">บันทึกอาหารที่ทานบ่อยเพื่อกดเพิ่มได้ทันที</span>
         </div>
       </div>
@@ -93,7 +98,7 @@
             <button 
               type="button" 
               class="btn-fav-add-quick" 
-              @click="calorieStore.addFoodToMeal('breakfast', item)"
+              @click="calorieStore.addMealItem('breakfast', item, 1)"
               title="เพิ่มลงมื้อเช้าทันที"
             >
               + เช้า
@@ -101,7 +106,7 @@
             <button 
               type="button" 
               class="btn-fav-add-quick" 
-              @click="calorieStore.addFoodToMeal('lunch', item)"
+              @click="calorieStore.addMealItem('lunch', item, 1)"
               title="เพิ่มลงมื้อกลางวันทันที"
             >
               + เที่ยง
@@ -112,14 +117,17 @@
               @click="calorieStore.toggleFavorite(item)"
               title="ลบออกจากเมนูโปรด"
             >
-              ✕
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 6 6 18"/>
+                <path d="m6 6 12 12"/>
+              </svg>
             </button>
           </div>
         </div>
       </div>
 
       <div class="empty-fav-box" v-else>
-        <p>ยังไม่มีรายการในเมนูโปรด คุณสามารถกดไอคอนดาว ⭐ ในมื้ออาหารเพื่อบันทึกได้ตลอดเวลา</p>
+        <p>ยังไม่มีรายการในเมนูโปรด คุณสามารถกดไอคอนดาวในการ์ดมื้ออาหารเพื่อบันทึกได้ตลอดเวลา</p>
       </div>
     </div>
 
@@ -127,7 +135,13 @@
     <div class="settings-action-card">
       <div class="card-head-row">
         <div>
-          <h3 class="card-title">⚙️ ตั้งค่า & Gemini AI Key</h3>
+          <h3 class="card-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:4px;">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+            <span>ตั้งค่า & Gemini AI Key</span>
+          </h3>
           <span class="card-sub">จัดการ API Key และการเชื่อมต่อ AI วิเคราะห์ภาพ</span>
         </div>
         <button 

@@ -113,7 +113,13 @@
           :class="{ active: state.activeTab === 'diary' }"
           @click="calorieStore.setActiveTab('diary')"
         >
-          <span>🏠 ไดอารี่</span>
+          <span class="pill-ico">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+              <polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+          </span>
+          <span class="pill-text">ไดอารี่</span>
         </button>
         <button 
           type="button" 
@@ -121,7 +127,12 @@
           :class="{ active: state.activeTab === 'coach' }"
           @click="calorieStore.setActiveTab('coach')"
         >
-          <span>✨ AI โค้ช</span>
+          <span class="pill-ico">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
+            </svg>
+          </span>
+          <span class="pill-text">AI โค้ช</span>
         </button>
         <button 
           type="button" 
@@ -129,7 +140,15 @@
           :class="{ active: state.activeTab === 'analytics' }"
           @click="calorieStore.setActiveTab('analytics')"
         >
-          <span>📊 สถิติ</span>
+          <span class="pill-ico">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 3v18h18"/>
+              <path d="M18 17V9"/>
+              <path d="M13 17V5"/>
+              <path d="M8 17v-3"/>
+            </svg>
+          </span>
+          <span class="pill-text">สถิติ</span>
         </button>
         <button 
           type="button" 
@@ -137,7 +156,13 @@
           :class="{ active: state.activeTab === 'profile' }"
           @click="calorieStore.setActiveTab('profile')"
         >
-          <span>👤 เป้าหมาย</span>
+          <span class="pill-ico">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="8" r="5"/>
+              <path d="M20 21a8 8 0 0 0-16 0"/>
+            </svg>
+          </span>
+          <span class="pill-text">เป้าหมาย</span>
         </button>
       </div>
     </header>
@@ -282,7 +307,7 @@
         <section class="macro-detail-card">
           <div class="macro-detail-header">
             <h3 class="detail-sec-title">สารอาหารวันนี้</h3>
-            <span class="detail-sec-sub font-num">แคลอรี่รวม: {{ dailyTotals.calories.toFixed(0) }} kcal</span>
+            <span class="detail-sec-sub">แคลอรี่รวม: {{ dailyTotals.calories.toFixed(0) }} kcal</span>
           </div>
 
           <div class="macro-detail-list">
@@ -292,7 +317,7 @@
                 <div class="m-color-bullet carb"></div>
                 <div class="m-row-texts">
                   <span class="m-row-title">คาร์โบไฮเดรต</span>
-                  <span class="m-row-cal-sub font-num">{{ (dailyTotals.carbs * 4).toFixed(0) }} kcal (4 kcal/g)</span>
+                  <span class="m-row-cal-sub">{{ (dailyTotals.carbs * 4).toFixed(0) }} kcal <span class="m-ratio">(4 kcal/g)</span></span>
                 </div>
               </div>
               <div class="m-row-middle">
@@ -300,9 +325,9 @@
                   <div class="m-prog-fill carb" :style="{ width: `${Math.min(100, (dailyTotals.carbs / (state.userProfile.carbsTarget || 1)) * 100)}%` }"></div>
                 </div>
               </div>
-              <div class="m-stat-col font-num">
-                <span class="m-stat-nums font-num">{{ dailyTotals.carbs.toFixed(0) }} <small>/ {{ state.userProfile.carbsTarget || 230 }}g</small></span>
-                <span class="m-stat-pct font-num">{{ Math.round((dailyTotals.carbs / (state.userProfile.carbsTarget || 1)) * 100) }}%</span>
+              <div class="m-stat-col">
+                <span class="m-stat-nums">{{ dailyTotals.carbs.toFixed(0) }} <small>/ {{ state.userProfile.carbsTarget || 230 }}g</small></span>
+                <span class="m-stat-pct">{{ Math.round((dailyTotals.carbs / (state.userProfile.carbsTarget || 1)) * 100) }}%</span>
               </div>
             </div>
 
@@ -312,7 +337,7 @@
                 <div class="m-color-bullet pro"></div>
                 <div class="m-row-texts">
                   <span class="m-row-title">โปรตีน</span>
-                  <span class="m-row-cal-sub font-num">{{ (dailyTotals.protein * 4).toFixed(0) }} kcal (4 kcal/g)</span>
+                  <span class="m-row-cal-sub">{{ (dailyTotals.protein * 4).toFixed(0) }} kcal <span class="m-ratio">(4 kcal/g)</span></span>
                 </div>
               </div>
               <div class="m-row-middle">
@@ -320,9 +345,9 @@
                   <div class="m-prog-fill pro" :style="{ width: `${Math.min(100, (dailyTotals.protein / (state.userProfile.proteinTarget || 1)) * 100)}%` }"></div>
                 </div>
               </div>
-              <div class="m-stat-col font-num">
-                <span class="m-stat-nums font-num">{{ dailyTotals.protein.toFixed(0) }} <small>/ {{ state.userProfile.proteinTarget || 120 }}g</small></span>
-                <span class="m-stat-pct font-num">{{ Math.round((dailyTotals.protein / (state.userProfile.proteinTarget || 1)) * 100) }}%</span>
+              <div class="m-stat-col">
+                <span class="m-stat-nums">{{ dailyTotals.protein.toFixed(0) }} <small>/ {{ state.userProfile.proteinTarget || 120 }}g</small></span>
+                <span class="m-stat-pct">{{ Math.round((dailyTotals.protein / (state.userProfile.proteinTarget || 1)) * 100) }}%</span>
               </div>
             </div>
 
@@ -332,7 +357,7 @@
                 <div class="m-color-bullet fat"></div>
                 <div class="m-row-texts">
                   <span class="m-row-title">ไขมัน</span>
-                  <span class="m-row-cal-sub font-num">{{ (dailyTotals.fat * 9).toFixed(0) }} kcal (9 kcal/g)</span>
+                  <span class="m-row-cal-sub">{{ (dailyTotals.fat * 9).toFixed(0) }} kcal <span class="m-ratio">(9 kcal/g)</span></span>
                 </div>
               </div>
               <div class="m-row-middle">
@@ -340,9 +365,9 @@
                   <div class="m-prog-fill fat" :style="{ width: `${Math.min(100, (dailyTotals.fat / (state.userProfile.fatTarget || 1)) * 100)}%` }"></div>
                 </div>
               </div>
-              <div class="m-stat-col font-num">
-                <span class="m-stat-nums font-num">{{ dailyTotals.fat.toFixed(0) }} <small>/ {{ state.userProfile.fatTarget || 55 }}g</small></span>
-                <span class="m-stat-pct font-num">{{ Math.round((dailyTotals.fat / (state.userProfile.fatTarget || 1)) * 100) }}%</span>
+              <div class="m-stat-col">
+                <span class="m-stat-nums">{{ dailyTotals.fat.toFixed(0) }} <small>/ {{ state.userProfile.fatTarget || 55 }}g</small></span>
+                <span class="m-stat-pct">{{ Math.round((dailyTotals.fat / (state.userProfile.fatTarget || 1)) * 100) }}%</span>
               </div>
             </div>
           </div>
@@ -655,6 +680,55 @@ function toggleWaterUpTo(targetCount) {
   cursor: pointer;
 }
 
+/* Top Segmented Navigation Pills */
+.top-nav-pills-bar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.35rem;
+  background: rgba(0, 0, 0, 0.28);
+  padding: 0.3rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.btn-top-pill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  padding: 0.5rem 0.3rem;
+  border: none;
+  background: transparent;
+  color: #A3C2B6;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  white-space: nowrap;
+}
+
+.btn-top-pill:hover:not(.active) {
+  color: #FFFFFF;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.btn-top-pill.active {
+  background: var(--accent-neon, #D4FF32);
+  color: var(--accent-neon-text, #0E251D);
+  box-shadow: 0 4px 14px rgba(212, 255, 50, 0.3);
+  font-weight: 800;
+}
+
+.btn-top-pill .pill-ico {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
 /* 2. Main Body (Overlapping Hero) */
 .main-body-container {
   padding: 0 1.2rem;
@@ -923,7 +997,7 @@ function toggleWaterUpTo(targetCount) {
 .macro-detail-card {
   background: var(--surface-card, #FFFFFF);
   border-radius: var(--radius-lg, 24px);
-  padding: 1.2rem;
+  padding: 1.25rem 1.35rem;
   border: 1px solid var(--border-subtle, #E8ECE9);
   box-shadow: var(--shadow-card, 0 4px 20px rgba(0, 0, 0, 0.04));
 }
@@ -932,7 +1006,9 @@ function toggleWaterUpTo(targetCount) {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 0.9rem;
+  margin-bottom: 1.1rem;
+  padding-bottom: 0.65rem;
+  border-bottom: 1px solid #F1F5F2;
 }
 
 .detail-sec-title {
@@ -940,53 +1016,102 @@ function toggleWaterUpTo(targetCount) {
   font-weight: 800;
   color: var(--text-main, #0F1E17);
   margin: 0;
+  letter-spacing: -0.2px;
 }
 
-.detail-sub-link {
+.detail-sec-sub {
   font-size: 0.78rem;
   font-weight: 700;
   color: var(--primary-forest, #154238);
-  cursor: pointer;
+  background: var(--primary-light, #EBF3F0);
+  padding: 3px 10px;
+  border-radius: 999px;
+  letter-spacing: 0.1px;
 }
 
-.macro-detail-items {
+.macro-detail-list {
   display: flex;
   flex-direction: column;
-  gap: 0.8rem;
+  gap: 1.05rem;
 }
 
 .macro-detail-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(130px, 1.4fr) minmax(70px, 1.6fr) minmax(85px, auto);
   align-items: center;
-  gap: 0.8rem;
+  gap: 0.85rem;
 }
 
-.m-dot {
+@media (max-width: 480px) {
+  .macro-detail-row {
+    grid-template-columns: minmax(115px, 1.3fr) minmax(50px, 1.2fr) minmax(75px, auto);
+    gap: 0.55rem;
+  }
+}
+
+.m-row-left {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.m-color-bullet {
   width: 10px;
   height: 10px;
   border-radius: 50%;
   flex-shrink: 0;
 }
 
-.m-dot.carb { background: var(--macro-carb, #3B82F6); box-shadow: 0 0 6px rgba(59, 130, 246, 0.5); }
-.m-dot.pro { background: var(--macro-protein, #8B5CF6); box-shadow: 0 0 6px rgba(139, 92, 246, 0.5); }
-.m-dot.fat { background: var(--macro-fat, #F59E0B); box-shadow: 0 0 6px rgba(245, 158, 11, 0.5); }
-
-.m-info-col {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
+.m-color-bullet.carb { 
+  background: var(--macro-carb, #3B82F6); 
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.45); 
+}
+.m-color-bullet.pro { 
+  background: var(--macro-protein, #8B5CF6); 
+  box-shadow: 0 0 8px rgba(139, 92, 246, 0.45); 
+}
+.m-color-bullet.fat { 
+  background: var(--macro-fat, #F59E0B); 
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.45); 
 }
 
-.m-info-title {
-  font-size: 0.82rem;
+.m-row-texts {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.m-row-title {
+  font-size: 0.88rem;
   font-weight: 700;
   color: var(--text-main, #0F1E17);
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.m-row-cal-sub {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--text-muted, #52665C);
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.m-ratio {
+  opacity: 0.8;
+  font-size: 0.68rem;
+}
+
+.m-row-middle {
+  flex: 1;
+  min-width: 0;
 }
 
 .m-prog-track {
-  height: 6px;
+  width: 100%;
+  height: 7px;
   background: #E8ECE9;
   border-radius: 999px;
   overflow: hidden;
@@ -995,35 +1120,41 @@ function toggleWaterUpTo(targetCount) {
 .m-prog-fill {
   height: 100%;
   border-radius: 999px;
+  transition: width 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.m-prog-fill.carb { background: var(--macro-carb, #3B82F6); }
-.m-prog-fill.pro { background: var(--macro-protein, #8B5CF6); }
-.m-prog-fill.fat { background: var(--macro-fat, #F59E0B); }
+.m-prog-fill.carb { background: linear-gradient(90deg, #60A5FA 0%, #3B82F6 100%); }
+.m-prog-fill.pro { background: linear-gradient(90deg, #A78BFA 0%, #8B5CF6 100%); }
+.m-prog-fill.fat { background: linear-gradient(90deg, #FBBF24 0%, #F59E0B 100%); }
 
 .m-stat-col {
   text-align: right;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
+  gap: 1px;
+  flex-shrink: 0;
 }
 
 .m-stat-nums {
-  font-size: 0.85rem;
+  font-size: 0.88rem;
   font-weight: 800;
   color: var(--text-main, #0F1E17);
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
 .m-stat-nums small {
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   font-weight: 600;
   color: var(--text-muted, #52665C);
 }
 
 .m-stat-pct {
-  font-size: 0.7rem;
-  font-weight: 800;
+  font-size: 0.72rem;
+  font-weight: 700;
   color: var(--text-muted, #52665C);
+  line-height: 1;
 }
 
 /* 5. Streak Card */

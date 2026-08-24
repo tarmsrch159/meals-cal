@@ -125,15 +125,19 @@
 
             <!-- Target Macros Breakdown -->
             <div class="target-macros-row">
-              <span class="tm-pill carb">🍞 คาร์บ {{ calculated.carbsTarget }}g</span>
-              <span class="tm-pill pro">🥩 โปรตีน {{ calculated.proteinTarget }}g</span>
-              <span class="tm-pill fat">🥑 ไขมัน {{ calculated.fatTarget }}g</span>
+              <span class="tm-pill carb font-num">คาร์บ {{ calculated.carbsTarget }}g</span>
+              <span class="tm-pill pro font-num">โปรตีน {{ calculated.proteinTarget }}g</span>
+              <span class="tm-pill fat font-num">ไขมัน {{ calculated.fatTarget }}g</span>
             </div>
           </div>
         </div>
 
         <button type="button" class="btn-apply-targets" @click="applyTargets">
-          🎯 บันทึกและใช้เป้าหมายนี้
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:4px;">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 14 14"/>
+          </svg>
+          <span>บันทึกและใช้เป้าหมายนี้</span>
         </button>
       </div>
     </div>
