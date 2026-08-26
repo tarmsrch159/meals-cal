@@ -133,19 +133,6 @@ export const getRotatedGeminiKeyList = () => {
   return rotated;
 };
 
-/** หมุนเวียนคีย์ Gemini แบบ Round-Robin */
-export const getRotatedGeminiKeyList = () => {
-  const keys = getGeminiApiKeys();
-  if (keys.length <= 1) return keys;
-  const rotated = [];
-  const startIndex = currentGeminiKeyIndex % keys.length;
-  currentGeminiKeyIndex = (currentGeminiKeyIndex + 1) % keys.length;
-  for (let i = 0; i < keys.length; i++) {
-    rotated.push(keys[(startIndex + i) % keys.length]);
-  }
-  return rotated;
-};
-
 // ============================================================================
 // 3. Fetch with Timeout Controller (รองรับการอัปโหลดรูปภาพและการประมวลผล AI)
 // ============================================================================
