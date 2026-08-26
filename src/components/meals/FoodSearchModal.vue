@@ -211,11 +211,11 @@
           </div>
         </div>
 
-        <!-- 2. AI Estimate Banner (When typing) -->
+        <!-- 2. AI Estimate Banner (Optional Action to Save Token) -->
         <div class="ai-trigger-banner" v-if="searchQuery.trim().length >= 2 && !isSearchingAI && !aiResult">
           <div class="ai-banner-content">
             <div class="ai-text">
-              <strong>วิเคราะห์โภชนาการด้วย AI:</strong>
+              <strong>ต้องการคำนวณโภชนาการด้วย AI?</strong>
               <span>"{{ searchQuery.trim() }}"</span>
             </div>
           </div>
@@ -225,7 +225,7 @@
             @click="askGeminiExplicit"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
-            <span>วิเคราะห์ทันที</span>
+            <span>ค้นหาด้วย AI (Groq)</span>
           </button>
         </div>
 
@@ -468,36 +468,26 @@ const filteredResults = computed(() => {
   return localResults.value.slice(0, 15);
 });
 
-let searchAiDebounceTimer = null;
-
 watch(searchQuery, (newVal) => {
   const q = newVal.trim();
-  if (searchAiDebounceTimer) clearTimeout(searchAiDebounceTimer);
+  aiResult.value = null;
 
   if (!q) {
     localResults.value = THAI_FOOD_DATABASE.map(item => ({ ...item, multiplier: 1 }));
-    aiResult.value = null;
     return;
   }
+  // ค้นหาเฉพาะในฐานข้อมูลอาหารไทยมาตรฐาน (Local) ประหยัด Token
   localResults.value = searchLocalFood(q).map(item => ({ ...item, multiplier: 1 }));
-
-  // Auto-trigger AI calculation with 500ms debounce
-  if (q.length >= 2) {
-    searchAiDebounceTimer = setTimeout(() => {
-      askGeminiExplicit();
-    }, 500);
-  }
 });
 
 function clearQuery() {
-  if (searchAiDebounceTimer) clearTimeout(searchAiDebounceTimer);
   searchQuery.value = '';
   aiResult.value = null;
 }
 
 function triggerSearch() {
-  if (searchQuery.value.trim()) {
-    if (searchAiDebounceTimer) clearTimeout(searchAiDebounceTimer);
+  // เมื่อกด Enter ถ้าไม่พบใน Local ให้เสนอเรียก AI หรือค้นหา AI ได้ทันที
+  if (filteredResults.value.length === 0 && searchQuery.value.trim()) {
     askGeminiExplicit();
   }
 }
@@ -514,6 +504,7 @@ async function askGeminiExplicit() {
     aiResult.value = { ...result, multiplier: 1 };
   } catch (err) {
     console.error('AI estimate error:', err);
+    calorieStore.showToast('ไม่สามารถเรียกใช้ AI ได้ กรุณาลองใหม่อีกครั้ง', 'error');
   } finally {
     isSearchingAI.value = false;
   }

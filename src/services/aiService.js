@@ -68,6 +68,8 @@ export const parseAiJsonResponse = (rawText) => {
 // ============================================================================
 // 2. Key Pool & Load Balancer Helpers
 // ============================================================================
+// 2. Key Pool & Load Balancer Helpers (อ่านจาก .env และ localStorage)
+// ============================================================================
 
 /** ดึงรายชื่อ Groq API Keys ทั้งหมดที่มีและตัดคีย์ซ้ำ/คีย์ว่าง */
 export const getGroqApiKeys = () => {
@@ -116,6 +118,19 @@ export const getGeminiApiKeys = () => {
     .filter(k => k && !k.includes('your_gemini_api_key'));
 
   return [...new Set(parsed)];
+};
+
+/** หมุนเวียนคีย์ Gemini แบบ Round-Robin */
+export const getRotatedGeminiKeyList = () => {
+  const keys = getGeminiApiKeys();
+  if (keys.length <= 1) return keys;
+  const rotated = [];
+  const startIndex = currentGeminiKeyIndex % keys.length;
+  currentGeminiKeyIndex = (currentGeminiKeyIndex + 1) % keys.length;
+  for (let i = 0; i < keys.length; i++) {
+    rotated.push(keys[(startIndex + i) % keys.length]);
+  }
+  return rotated;
 };
 
 /** หมุนเวียนคีย์ Gemini แบบ Round-Robin */
@@ -294,7 +309,7 @@ export const callGeminiChatApi = async ({
     contents,
     generationConfig: {
       temperature,
-      maxOutputTokens: Math.max(maxTokens, 2048),
+      maxOutputTokens: Math.max(maxTokens, 4096),
       thinkingConfig: {
         thinkingBudget: 0
       }
@@ -315,8 +330,7 @@ export const callGeminiChatApi = async ({
   const validModels = [
     'gemini-2.5-flash',
     'gemini-3.5-flash',
-    'gemini-3.7-flash',
-    'gemini-flash-latest'
+    'gemini-3.7-flash'
   ];
 
   for (const key of keys) {
