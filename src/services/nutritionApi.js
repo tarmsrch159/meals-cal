@@ -1,13 +1,31 @@
-// Nutrition API Service: Google Gemini Flash (NLP & Vision) + Open Food Facts + Local Thai DB
+// Nutrition API Service: Hybrid Groq Cloud & Google Gemini Flash + Open Food Facts + Local Thai DB
 import { searchLocalFood, THAI_FOOD_DATABASE } from '../data/thaiFoodDb.js';
+import {
+  callAiChat,
+  callAiVisionApi,
+  callGeminiVisionApi,
+  getGroqApiKeys,
+  getGeminiApiKeys,
+  getRotatedGroqKeyList,
+  getRotatedGeminiKeyList,
+  getActiveAiProviderName,
+  setActiveAiProvider,
+  isGroqActive,
+  parseAiJsonResponse,
+  testAiServiceConnection
+} from './aiService.js';
 
-// Default Gemini API Key from environment or local storage
+// ============================================================================
+// API KEY POOL & MANAGEMENT
+// ============================================================================
+
 export function getGeminiApiKey() {
-  const customKey = localStorage.getItem('meals_cal_gemini_key');
-  if (customKey && customKey.trim().length > 10) {
-    return customKey.trim();
-  }
-  return (import.meta.env.VITE_GEMINI_API_KEY || '').trim();
+  const keys = getRotatedGeminiKeyList();
+  return keys.length > 0 ? keys[0] : '';
+}
+
+export function getAllGeminiApiKeys() {
+  return getGeminiApiKeys();
 }
 
 export function setGeminiApiKey(key) {
@@ -18,8 +36,41 @@ export function setGeminiApiKey(key) {
   }
 }
 
+export function getGroqApiKey() {
+  const keys = getRotatedGroqKeyList();
+  return keys.length > 0 ? keys[0] : '';
+}
+
+export function getAllGroqApiKeys() {
+  return getGroqApiKeys();
+}
+
+export function setGroqApiKey(key) {
+  if (!key || !key.trim()) {
+    localStorage.removeItem('meals_cal_groq_key');
+  } else {
+    localStorage.setItem('meals_cal_groq_key', key.trim());
+  }
+}
+
+export function getActiveAiProvider() {
+  return getActiveAiProviderName();
+}
+
+export function setAiProviderPreference(provider) {
+  setActiveAiProvider(provider);
+}
+
+export async function testAiConnection(provider = 'all') {
+  return await testAiServiceConnection(provider);
+}
+
+// ============================================================================
+// 1. ESTIMATE NUTRITION FROM TEXT (HYBRID GROQ <-> GEMINI)
+// ============================================================================
+
 /**
- * วิเคราะห์สารอาหารและคำนวณแคลอรี่จากข้อความภาษาไทยด้วย Gemini Flash (พร้อม Fast Timeout & Fallback)
+ * วิเคราะห์สารอาหารและคำนวณแคลอรี่จากข้อความภาษาไทยด้วย AI (Groq / Gemini)
  * @param {string} query คำค้นหา เช่น "ข้าวมันไก่ตอน 1 จาน", "ต้มยำกุ้งน้ำใส + ข้าวสวย 2 ทัพพี"
  */
 export async function estimateNutritionWithGemini(query) {
@@ -28,29 +79,10 @@ export async function estimateNutritionWithGemini(query) {
   }
 
   const cleanQuery = query.trim();
-  const apiKey = getGeminiApiKey();
 
-  // If no valid API key, use smart local Thai DB estimation directly
-  if (!apiKey || apiKey.includes('your_gemini_api_key')) {
-    return fallbackLocalEstimate(cleanQuery);
-  }
-
-  // Active production models from Google AI
-  const models = [
-    'gemini-3.5-flash',
-    'gemini-flash-lite-latest',
-    'gemini-3.5-flash-lite',
-    'gemini-2.5-flash',
-    'gemini-flash-latest',
-    'gemini-3.7-flash',
-    'gemini-pro-latest'
-  ];
-  let lastError = null;
-
-  const prompt = `คุณคือนักโภชนาการผู้เชี่ยวชาญอาหารไทยและอาหารสากล 
-จงวิเคราะห์และคำนวณคุณค่าทางโภชนาการของอาหารตามข้อความนี้: "${cleanQuery}"
-
-ตอบกลับมาในรูปแบบ JSON Object ตัวเดียวเท่านั้น (ห้ามใส่ Markdown code block อื่นนอกจาก JSON string) โดยมีโครงสร้างดังนี้:
+  const systemPrompt = `คุณคือนักโภชนาการผู้เชี่ยวชาญอาหารไทยและอาหารสากล 
+จงวิเคราะห์และคำนวณคุณค่าทางโภชนาการของอาหารตามข้อความที่ระบุ
+ตอบกลับมาเป็น JSON Object ตัวเดียวเท่านั้น (ห้ามใส่ Markdown หรือข้อความอื่นนอกเหนือจาก JSON):
 {
   "meal_name": "ชื่ออาหารภาษาไทยที่ชัดเจนและกระชับ",
   "name_en": "English Name",
@@ -66,79 +98,51 @@ export async function estimateNutritionWithGemini(query) {
   "health_tip": "คำแนะนำโภชนาการที่เป็นประโยชน์ภาษาไทย 1 ประโยค"
 }`;
 
-  for (const model of models) {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 7000); // 7s fast timeout
+  try {
+    const aiResult = await callAiChat({
+      userText: `วิเคราะห์สารอาหารของเมนูนี้: "${cleanQuery}"`,
+      systemPrompt,
+      temperature: 0.2,
+      maxTokens: 1000,
+      responseFormat: 'json'
+    });
 
-    try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        signal: controller.signal,
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            responseMimeType: 'application/json',
-            temperature: 0.2
-          }
-        })
-      });
+    if (aiResult && aiResult.text) {
+      const parsed = parseAiJsonResponse(aiResult.text);
 
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        const errText = await response.text();
-        if (response.status === 400 || response.status === 403) {
-          throw new Error('Gemini API Key ไม่ถูกต้อง หรือไม่มีสิทธิ์เข้าถึง (กรุณาตรวจในหน้าตั้งค่า ⚙️)');
-        } else if (response.status === 429) {
-          throw new Error('โควต้า Gemini API เต็มชั่วคราว');
-        }
-        throw new Error(`API Error ${response.status}: ${errText}`);
+      if (parsed && (parsed.meal_name || parsed.calories !== undefined)) {
+        return {
+          id: 'ai_' + Date.now(),
+          name: parsed.meal_name || cleanQuery,
+          nameEn: parsed.name_en || '',
+          calories: Math.max(10, Number(parsed.calories) || 300),
+          protein: Math.max(0, Number(parsed.protein) || 15),
+          carbs: Math.max(0, Number(parsed.carbs) || 35),
+          fat: Math.max(0, Number(parsed.fat) || 10),
+          fiber: Number(parsed.fiber) || 2,
+          sodium: Number(parsed.sodium) || 500,
+          sugar: Number(parsed.sugar) || 2,
+          servingSize: parsed.serving_size || '1 หน่วยบริโภค',
+          category: parsed.category || 'อาหารทั่วไป',
+          healthTip: parsed.health_tip || 'รับประทานอาหารให้หลากหลายครบ 5 หมู่',
+          aiProvider: aiResult.provider || 'groq',
+          model: aiResult.model || '',
+          source: `${aiResult.provider === 'groq' ? 'Groq' : 'Gemini'} AI (${aiResult.model})`
+        };
       }
-
-      const data = await response.json();
-      const parts = data?.candidates?.[0]?.content?.parts || [];
-      const rawText = parts.filter(p => !p.thought && p.text).map(p => p.text).join('\n') || parts[parts.length - 1]?.text;
-      if (!rawText) {
-        throw new Error('ไม่พบข้อมูลตอบกลับจาก AI');
-      }
-
-      const cleanJsonStr = rawText.replace(/```json\n?|```/g, '').trim();
-      const parsed = JSON.parse(cleanJsonStr);
-
-      return {
-        id: 'gemini_' + Date.now(),
-        name: parsed.meal_name || cleanQuery,
-        nameEn: parsed.name_en || '',
-        calories: Math.max(10, Number(parsed.calories) || 300),
-        protein: Number(parsed.protein) || 15,
-        carbs: Number(parsed.carbs) || 35,
-        fat: Number(parsed.fat) || 10,
-        fiber: Number(parsed.fiber) || 2,
-        sodium: Number(parsed.sodium) || 500,
-        sugar: Number(parsed.sugar) || 2,
-        servingSize: parsed.serving_size || '1 หน่วยบริโภค',
-        category: parsed.category || 'อาหารทั่วไป',
-        healthTip: parsed.health_tip || 'รับประทานอาหารให้หลากหลายครบ 5 หมู่',
-        source: 'Gemini AI Flash'
-      };
-    } catch (err) {
-      clearTimeout(timeoutId);
-      console.warn(`Gemini model ${model} error:`, err.message);
-      lastError = err;
     }
+  } catch (err) {
+    console.warn('[Nutrition API] AI Text Estimate Warning, falling back to Local Thai DB:', err);
   }
 
-  // Fallback to instant local estimate if Gemini fails
-  console.info('Falling back to local Thai food estimation for:', cleanQuery);
+  // Fallback 100% Guaranteed to Local Thai Database
   return fallbackLocalEstimate(cleanQuery);
 }
 
 /**
- * ฟังก์ชันสำรองข้อมูลอาหารไทยอัจฉริยะ (ทำงานได้ 100% แม้ไม่มี API Key หรืออินเทอร์เน็ตช้า)
+ * ฟังก์ชันสำรองข้อมูลอาหารไทยอัจฉริยะ (ทำงานได้ 100% แม้ไม่มี API Key หรือออฟไลน์)
  */
-function fallbackLocalEstimate(query) {
+export function fallbackLocalEstimate(query) {
   const localMatches = searchLocalFood(query);
   if (localMatches.length > 0) {
     const top = localMatches[0];
@@ -155,30 +159,32 @@ function fallbackLocalEstimate(query) {
       servingSize: top.servingSize || '1 จาน',
       category: top.category || 'อาหารจานเดียว',
       healthTip: top.healthTip || 'สารอาหารอ้างอิงจากฐานข้อมูลโภชนาการไทยมาตรฐาน',
-      source: 'ฐานข้อมูลอาหารไทย'
+      aiProvider: 'local',
+      model: 'Thai Food DB',
+      source: 'ฐานข้อมูลอาหารไทย (Local)'
     };
   }
 
-  // Smart heuristic estimate for generic dishes
+  // Heuristic estimate for generic dishes
   let estCalories = 380;
   let estProtein = 18;
   let estCarbs = 45;
   let estFat = 12;
 
-  if (query.includes('ทอด') || query.includes('กรอบ') || query.includes('มัน')) {
+  if (query.includes('ทอด') || query.includes('กรอบ') || query.includes('มัน') || query.includes('ขาหมู')) {
     estCalories = 580;
     estFat = 28;
     estCarbs = 55;
-  } else if (query.includes('ต้ม') || query.includes('นึ่ง') || query.includes('คลีน') || query.includes('สลัด')) {
-    estCalories = 220;
-    estProtein = 26;
+  } else if (query.includes('ต้ม') || query.includes('นึ่ง') || query.includes('คลีน') || query.includes('สลัด') || query.includes('อกไก่')) {
+    estCalories = 240;
+    estProtein = 28;
     estFat = 4;
     estCarbs = 20;
-  } else if (query.includes('น้ำ') || query.includes('ชา') || query.includes('กาแฟ')) {
-    estCalories = 120;
-    estProtein = 2;
-    estCarbs = 22;
-    estFat = 3;
+  } else if (query.includes('น้ำ') || query.includes('ชา') || query.includes('กาแฟ') || query.includes('นม')) {
+    estCalories = 140;
+    estProtein = 3;
+    estCarbs = 24;
+    estFat = 4;
   }
 
   return {
@@ -194,233 +200,103 @@ function fallbackLocalEstimate(query) {
     servingSize: '1 ที่ (ประมาณ)',
     category: 'อาหารทั่วไป',
     healthTip: 'ประมาณการจากสูตรอาหารไทยมาตรฐาน',
+    aiProvider: 'local',
+    model: 'Local Engine',
     source: 'ระบบประมาณการโภชนาการ'
   };
 }
 
+// ============================================================================
+// 2. FOOD PHOTO RECOGNITION (AI VISION OCR)
+// ============================================================================
+
 /**
- * สแกนและวิเคราะห์รูปภาพอาหารด้วย Gemini Flash Vision (พร้อม Fast Timeout & Fallback)
- * @param {string} base64Data ข้อมูลรูปภาพ Base64
- * @param {string} mimeType เช่น "image/jpeg", "image/png"
+ * วิเคราะห์รูปภาพอาหารผ่าน AI Vision (Google Gemini Flash Vision)
  */
 export async function analyzeFoodPhotoWithGemini(base64Data, mimeType = 'image/jpeg') {
   if (!base64Data) {
-    throw new Error('กรุณาอัปโหลดรูปภาพอาหาร');
+    throw new Error('ไม่พบข้อมูลรูปภาพสำหรับวิเคราะห์');
   }
 
-  const apiKey = getGeminiApiKey();
-  if (!apiKey || apiKey.includes('your_gemini_api_key')) {
-    // If no real key, provide realistic demo analysis
-    await new Promise(r => setTimeout(r, 600));
-    return {
-      id: 'vision_sample_' + Date.now(),
-      name: 'อาหารจานเดียวจากรูปภาพ',
-      nameEn: 'Mixed Thai Dish',
-      calories: 480,
-      protein: 24.0,
-      carbs: 58.0,
-      fat: 14.0,
-      fiber: 2.5,
-      sodium: 780,
-      servingSize: '1 จาน (300g)',
-      ingredients: ['ข้าวสวย', 'เนื้อสัตว์', 'ผักเคียง', 'เครื่องปรุง'],
-      healthScore: 8,
-      healthTip: 'ตรวจพบโปรตีนและคาร์โบไฮเดรตในสัดส่วนที่เหมาะสม',
-      source: 'AI Vision'
-    };
-  }
-
-  const models = [
-    'gemini-3.5-flash',
-    'gemini-flash-lite-latest',
-    'gemini-3.5-flash-lite',
-    'gemini-2.5-flash',
-    'gemini-flash-latest',
-    'gemini-3.7-flash',
-    'gemini-pro-latest'
-  ];
-  let lastError = null;
-
-  const prompt = `คุณคือนักโภชนาการและ AI ตรวจจับอาหารไทยจากรูปถ่าย
-จงวิเคราะห์ภาพนี้และตอบเป็น JSON Object เท่านั้น:
+  const prompt = `คุณคือนักโภชนาการ AI ผู้เชี่ยวชาญด้านอาหารไทยและโภชนาการสากล
+วิเคราะห์ภาพอาหารนี้อย่างละเอียด ระบุชื่อเมนูภาษาไทย, วัตถุดิบที่ตรวจพบ, สัดส่วน, และประมาณการพลังงานสารอาหาร
+ตอบกลับเป็น JSON Object รูปแบบนี้เท่านั้น (ห้ามใส่ Markdown หรือข้อความอื่นนอกเหนือจาก JSON):
 {
-  "is_food": true,
-  "meal_name": "ชื่ออาหารภาษาไทย",
-  "name_en": "English name",
-  "ingredients_detected": ["วัตถุดิบ 1", "วัตถุดิบ 2"],
-  "estimated_portion": "1 จาน (300g)",
+  "meal_name": "ชื่อเมนูภาษาไทยที่ชัดเจน",
+  "name_en": "English Name",
   "calories": 520,
   "protein": 28.0,
   "carbs": 60.0,
   "fat": 18.0,
   "fiber": 2.5,
   "sodium": 850,
+  "ingredients_detected": ["วัตถุดิบ 1", "วัตถุดิบ 2"],
+  "estimated_portion": "1 จาน (300g)",
   "health_score": 8,
-  "health_tip": "คำแนะนำโภชนาการภาษาไทย"
+  "health_tip": "คำแนะนำโภชนาการภาษาไทย 1 ประโยค"
 }`;
 
-  for (const model of models) {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
-
-    try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        signal: controller.signal,
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                { text: prompt },
-                {
-                  inlineData: {
-                    mimeType: mimeType,
-                    data: base64Data
-                  }
-                }
-              ]
-            }
-          ],
-          generationConfig: {
-            responseMimeType: 'application/json',
-            temperature: 0.2
-          }
-        })
-      });
-
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(`Vision API Error (${response.status}): ${errText}`);
-      }
-
-      const data = await response.json();
-      const parts = data?.candidates?.[0]?.content?.parts || [];
-      const rawText = parts.filter(p => !p.thought && p.text).map(p => p.text).join('\n') || parts[parts.length - 1]?.text;
-      if (!rawText) throw new Error('AI ไม่ได้ส่งผลการวิเคราะห์ภาพ');
-
-      const cleanJson = rawText.replace(/```json\n?|```/g, '').trim();
-      const parsed = JSON.parse(cleanJson);
-
-      return {
-        id: 'vision_' + Date.now(),
-        name: parsed.meal_name || 'อาหารจากรูปถ่าย',
-        nameEn: parsed.name_en || '',
-        calories: Number(parsed.calories) || 450,
-        protein: Number(parsed.protein) || 20,
-        carbs: Number(parsed.carbs) || 50,
-        fat: Number(parsed.fat) || 12,
-        fiber: Number(parsed.fiber) || 2,
-        sodium: Number(parsed.sodium) || 600,
-        servingSize: parsed.estimated_portion || '1 จาน',
-        ingredients: parsed.ingredients_detected || [],
-        healthScore: parsed.health_score || 7,
-        healthTip: parsed.health_tip || 'คำนวณจากรูปภาพโดยประมาณ',
-        source: 'Gemini Vision AI'
-      };
-    } catch (err) {
-      clearTimeout(timeoutId);
-      lastError = err;
-    }
-  }
-
-  throw lastError || new Error('ไม่สามารถวิเคราะห์ภาพได้');
-}
-
-/**
- * ค้นหาข้อมูลอาหารจาก Open Food Facts API (สินค้าสำเร็จรูป / ขนม / เครื่องดื่ม)
- */
-export async function searchOpenFoodFacts(query) {
-  if (!query || query.trim().length < 2) return [];
-
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3500);
-
-    const url = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query.trim())}&search_simple=1&action=process&json=1&page_size=8`;
-    
-    const res = await fetch(url, {
-      signal: controller.signal,
-      headers: { 'Accept': 'application/json' }
+    const visionResult = await callAiVisionApi({
+      prompt,
+      base64Data,
+      mimeType
     });
 
-    clearTimeout(timeoutId);
+    if (visionResult && visionResult.rawText) {
+      const parsed = parseAiJsonResponse(visionResult.rawText);
 
-    if (!res.ok) return [];
-    const data = await res.json();
-    if (!data.products || !Array.isArray(data.products)) return [];
-
-    return data.products
-      .filter(p => p.product_name || p.product_name_th || p.product_name_en)
-      .map(p => {
-        const nutriments = p.nutriments || {};
-        const calories = Math.round(
-          nutriments['energy-kcal_100g'] || 
-          nutriments['energy-kcal_serving'] || 
-          nutriments['energy-kcal'] || 
-          (nutriments['energy_100g'] ? nutriments['energy_100g'] / 4.184 : 0)
-        );
+      if (parsed && (parsed.meal_name || parsed.calories !== undefined)) {
+        // ตรวจสอบกรณีภาพไม่ใช่รูปอาหาร
+        const isNotFood =
+          parsed.meal_name?.includes('ไม่พบภาพอาหาร') ||
+          parsed.meal_name?.includes('ไม่มีอาหาร') ||
+          parsed.meal_name?.toLowerCase().includes('no food') ||
+          (parsed.calories === 0 && (!parsed.ingredients_detected || parsed.ingredients_detected.length === 0));
 
         return {
-          id: 'off_' + (p.code || Math.random().toString(36).substr(2, 9)),
-          name: p.product_name_th || p.product_name || p.product_name_en,
-          nameEn: p.product_name_en || p.brands || '',
-          brand: p.brands || '',
-          category: 'สินค้าสำเร็จรูป',
-          calories: calories || 150,
-          protein: Math.round((nutriments.proteins_100g || nutriments.proteins || 0) * 10) / 10,
-          carbs: Math.round((nutriments.carbohydrates_100g || nutriments.carbohydrates || 0) * 10) / 10,
-          fat: Math.round((nutriments.fat_100g || nutriments.fat || 0) * 10) / 10,
-          fiber: Math.round((nutriments.fiber_100g || nutriments.fiber || 0) * 10) / 10,
-          sodium: Math.round((nutriments.sodium_100g || nutriments.sodium || 0) * 1000),
-          servingSize: p.serving_size || '100 กรัม / 1 หน่วยบริโภค',
-          healthTip: p.nutriscore_grade ? `Nutri-Score: ระดับ ${p.nutriscore_grade.toUpperCase()}` : 'สินค้าสำเร็จรูปมีข้อมูลโภชนาการตามฉลาก',
-          source: 'Open Food Facts'
+          id: 'vision_' + Date.now(),
+          name: parsed.meal_name || 'อาหารจากรูปถ่าย',
+          nameEn: parsed.name_en || '',
+          calories: isNotFood ? 0 : Math.max(10, Number(parsed.calories) || 450),
+          protein: Math.max(0, Number(parsed.protein) || (isNotFood ? 0 : 20)),
+          carbs: Math.max(0, Number(parsed.carbs) || (isNotFood ? 0 : 50)),
+          fat: Math.max(0, Number(parsed.fat) || (isNotFood ? 0 : 12)),
+          fiber: Number(parsed.fiber) || (isNotFood ? 0 : 2),
+          sodium: Number(parsed.sodium) || (isNotFood ? 0 : 600),
+          servingSize: parsed.estimated_portion || '1 จาน',
+          ingredients: parsed.ingredients_detected || [],
+          healthScore: isNotFood ? 0 : (parsed.health_score || 7),
+          healthTip: parsed.health_tip || (isNotFood ? 'กรุณาถ่ายภาพอาหารให้อยู่ในตำแหน่งที่ชัดเจน' : 'รับประทานอาหารให้หลากหลาย'),
+          aiProvider: visionResult.provider || 'gemini',
+          model: visionResult.model,
+          source: `${visionResult.provider === 'gemini' ? 'Google Gemini Vision' : 'Groq Vision'} (${visionResult.model})`,
+          isNotFood
         };
-      });
+      }
+    }
   } catch (err) {
-    return [];
+    console.error('[Nutrition API] AI Vision error:', err);
+    throw err;
   }
+
+  throw new Error('เรียกใช้ API Key ไม่สำเร็จ (AI Vision ไม่ตอบสนองหรือหมดเวลาเชื่อมต่อ)');
 }
+
+// ============================================================================
+// 3. AI COACH & MEAL RECOMMENDATION (HYBRID GROQ <-> GEMINI)
+// ============================================================================
 
 /**
  * AI โภชนาการอัจฉริยะ: วิเคราะห์มื้อที่กินไปแล้วในวันนี้ และแนะนำเมนูสำหรับมื้อถัดไปตามโควต้าสารอาหารที่เหลือจริง
  */
 export async function getAiMealRecommendation({ dailyTotals, targets, remaining, eatenList, nextMealSlot = 'dinner', goal = 'maintain' }) {
-  const apiKey = getGeminiApiKey();
-
   const eatenText = eatenList && eatenList.length > 0
     ? eatenList.map(item => `- ${item.name} (${item.calories} kcal, P:${item.protein}g C:${item.carbs}g F:${item.fat}g)`).join('\n')
     : '(ยังไม่มีการบันทึกอาหารในวันนี้)';
 
-  const models = [
-    'gemini-3.5-flash',
-    'gemini-flash-lite-latest',
-    'gemini-3.5-flash-lite',
-    'gemini-2.5-flash',
-    'gemini-flash-latest',
-    'gemini-3.7-flash',
-    'gemini-pro-latest'
-  ];
-
-  const prompt = `คุณคือนักโภชนาการและ AI ผู้ช่วยวางแผนมื้ออาหารไทยส่วนบุคคล
-เป้าหมายผู้ใช้: ${goal === 'lose' ? 'ลดไขมัน/ลดน้ำหนัก' : goal === 'gain' ? 'เพิ่มกล้ามเนื้อ/เพิ่มน้ำหนัก' : 'รักษาสุขภาพ/รักษาน้ำหนัก'}
-มื้อที่ต้องการแนะนำ: ${nextMealSlot}
-
-สถานะสารอาหารวันนี้:
-- ทานไปแล้ว: ${dailyTotals.calories} / ${targets.calorieTarget} kcal (เหลืออีก ${remaining.calories} kcal)
-- โปรตีน: ${dailyTotals.protein} / ${targets.proteinTarget}g (เหลืออีก ${remaining.protein}g)
-- คาร์บ: ${dailyTotals.carbs} / ${targets.carbsTarget}g (เหลืออีก ${remaining.carbs}g)
-- ไขมัน: ${dailyTotals.fat} / ${targets.fatTarget}g (เหลืออีก ${remaining.fat}g)
-
-รายการที่ทานไปแล้ววันนี้:
-${eatenText}
-
+  const systemPrompt = `คุณคือนักโภชนาการและ AI ผู้ช่วยวางแผนมื้ออาหารไทยส่วนบุคคล
 จงวิเคราะห์ภาพรวมโภชนาการวันนี้ ให้คะแนนสุขภาพ (1-100) และแนะนำ 3 เมนูอาหารไทยสำหรับ "${nextMealSlot}" ที่เหมาะกับโควต้าแคลอรี่และสารอาหารที่เหลือที่สุด
-
 ตอบกลับเป็น JSON Object รูปแบบนี้เท่านั้น (ห้ามใส่ Markdown อื่นนอกเหนือจาก JSON):
 {
   "healthScore": 88,
@@ -449,7 +325,7 @@ ${eatenText}
       "fiber": 4,
       "sodium": 550,
       "servingSize": "1 ชาม",
-      "reason": "..."
+      "reason": "เหตุผล..."
     },
     {
       "name": "ชื่อเมนูไทย 3",
@@ -461,53 +337,45 @@ ${eatenText}
       "fiber": 5,
       "sodium": 500,
       "servingSize": "1 จาน",
-      "reason": "..."
+      "reason": "เหตุผล..."
     }
   ]
 }`;
 
-  if (apiKey && !apiKey.includes('your_gemini_api_key')) {
-    for (const model of models) {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 9000);
+  const userQuery = `เป้าหมายผู้ใช้: ${goal === 'lose' ? 'ลดไขมัน/ลดน้ำหนัก' : goal === 'gain' ? 'เพิ่มกล้ามเนื้อ/เพิ่มน้ำหนัก' : 'รักษาสุขภาพ/รักษาน้ำหนัก'}
+มื้อที่ต้องการแนะนำ: ${nextMealSlot}
 
-      try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          signal: controller.signal,
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: {
-              responseMimeType: 'application/json',
-              temperature: 0.3
-            }
-          })
-        });
+สถานะสารอาหารวันนี้:
+- ทานไปแล้ว: ${dailyTotals.calories} / ${targets.calorieTarget} kcal (เหลืออีก ${remaining.calories} kcal)
+- โปรตีน: ${dailyTotals.protein} / ${targets.proteinTarget}g (เหลืออีก ${remaining.protein}g)
+- คาร์บ: ${dailyTotals.carbs} / ${targets.carbsTarget}g (เหลืออีก ${remaining.carbs}g)
+- ไขมัน: ${dailyTotals.fat} / ${targets.fatTarget}g (เหลืออีก ${remaining.fat}g)
 
-        clearTimeout(timeoutId);
+รายการที่ทานไปแล้ววันนี้:
+${eatenText}`;
 
-        if (response.ok) {
-          const data = await response.json();
-          const parts = data?.candidates?.[0]?.content?.parts || [];
-          const rawText = parts.filter(p => !p.thought && p.text).map(p => p.text).join('\n') || parts[parts.length - 1]?.text;
-          if (rawText) {
-            const cleanJson = rawText.replace(/```json\n?|```/g, '').trim();
-            const parsed = JSON.parse(cleanJson);
-            if (parsed.recommendations && parsed.recommendations.length > 0) {
-              return {
-                ...parsed,
-                source: `Gemini AI (${model})`
-              };
-            }
-          }
-        }
-      } catch (err) {
-        clearTimeout(timeoutId);
-        console.warn(`AI Coach model ${model} failed:`, err.message);
+  try {
+    const aiResult = await callAiChat({
+      userText: userQuery,
+      systemPrompt,
+      temperature: 0.3,
+      maxTokens: 1200,
+      responseFormat: 'json'
+    });
+
+    if (aiResult && aiResult.text) {
+      const parsed = parseAiJsonResponse(aiResult.text);
+      if (parsed && parsed.recommendations && parsed.recommendations.length > 0) {
+        return {
+          ...parsed,
+          aiProvider: aiResult.provider,
+          model: aiResult.model,
+          source: `${aiResult.provider === 'groq' ? 'Groq' : 'Gemini'} AI (${aiResult.model})`
+        };
       }
     }
+  } catch (err) {
+    console.warn('[Nutrition API] AI Coach request error, falling back to local coach:', err);
   }
 
   // Smart Local Fallback based on remaining macros
@@ -580,6 +448,63 @@ function fallbackLocalCoach({ dailyTotals, targets, remaining, nextMealSlot }) {
     dailyAnalysis: analysis,
     nutritionTip: tip,
     recommendations: recs,
-    source: 'ระบบโภชนาการอัจฉริยะ'
+    source: 'ระบบโภชนาการอัจฉริยะ (Local)'
   };
+}
+
+// ============================================================================
+// 4. OPEN FOOD FACTS API
+// ============================================================================
+
+export async function searchOpenFoodFacts(query) {
+  if (!query || query.trim().length < 2) return [];
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3500);
+
+    const url = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query.trim())}&search_simple=1&action=process&json=1&page_size=8`;
+    
+    const res = await fetch(url, {
+      signal: controller.signal,
+      headers: { 'Accept': 'application/json' }
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!res.ok) return [];
+    const data = await res.json();
+    if (!data.products || !Array.isArray(data.products)) return [];
+
+    return data.products
+      .filter(p => p.product_name || p.product_name_th || p.product_name_en)
+      .map(p => {
+        const nutriments = p.nutriments || {};
+        const calories = Math.round(
+          nutriments['energy-kcal_100g'] || 
+          nutriments['energy-kcal_serving'] || 
+          nutriments['energy-kcal'] || 
+          (nutriments['energy_100g'] ? nutriments['energy_100g'] / 4.184 : 0)
+        );
+
+        return {
+          id: 'off_' + (p.code || Math.random().toString(36).substr(2, 9)),
+          name: p.product_name_th || p.product_name || p.product_name_en,
+          nameEn: p.product_name_en || p.brands || '',
+          brand: p.brands || '',
+          category: 'สินค้าสำเร็จรูป',
+          calories: calories || 150,
+          protein: Math.round((nutriments.proteins_100g || nutriments.proteins || 0) * 10) / 10,
+          carbs: Math.round((nutriments.carbohydrates_100g || nutriments.carbohydrates || 0) * 10) / 10,
+          fat: Math.round((nutriments.fat_100g || nutriments.fat || 0) * 10) / 10,
+          fiber: Math.round((nutriments.fiber_100g || nutriments.fiber || 0) * 10) / 10,
+          sodium: Math.round((nutriments.sodium_100g || nutriments.sodium || 0) * 1000),
+          servingSize: p.serving_size || '100 กรัม / 1 หน่วยบริโภค',
+          healthTip: p.nutriscore_grade ? `Nutri-Score: ระดับ ${p.nutriscore_grade.toUpperCase()}` : 'สินค้าสำเร็จรูปมีข้อมูลโภชนาการตามฉลาก',
+          source: 'Open Food Facts'
+        };
+      });
+  } catch (err) {
+    return [];
+  }
 }

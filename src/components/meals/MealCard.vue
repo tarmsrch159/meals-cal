@@ -98,6 +98,21 @@
             
             <div class="item-details">
               <span class="item-serving">{{ item.servingSize }}</span>
+
+              <!-- AI Provider Mini Badge -->
+              <span v-if="getItemAiProvider(item) === 'groq'" class="mini-ai-badge badge-groq" title="วิเคราะห์โดย Groq AI">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="6" fill="#F55036"/><path d="M12 5C8.13 5 5 8.13 5 12s3.13 7 7 7 7-3.13 7-7h-7v2.5h4.24c-.65 1.77-2.36 3-4.24 3-2.48 0-4.5-2.02-4.5-4.5S9.52 7.5 12 7.5c1.15 0 2.2.43 3 1.15l1.77-1.77C15.54 5.76 13.86 5 12 5z" fill="#FFFFFF"/></svg>
+                <span>Groq</span>
+              </span>
+              <span v-else-if="getItemAiProvider(item) === 'gemini'" class="mini-ai-badge badge-gemini" title="วิเคราะห์โดย Google Gemini">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M12 2C12 7.52 7.52 12 2 12C7.52 12 12 16.48 12 22C12 16.48 16.48 12 22 12C16.48 12 12 7.52 12 2Z" fill="#4E80EE"/></svg>
+                <span>Gemini</span>
+              </span>
+              <span v-else-if="getItemAiProvider(item) === 'local'" class="mini-ai-badge badge-local" title="ฐานข้อมูลอาหารไทย (Local)">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+                <span>Local</span>
+              </span>
+
               <span class="item-macros font-num">
                 (P: {{ (item.protein * (item.multiplier || 1)).toFixed(0) }}g • 
                  C: {{ (item.carbs * (item.multiplier || 1)).toFixed(0) }}g • 
@@ -290,6 +305,15 @@ function addPresetItem(preset) {
 function handleClearMeal() {
   calorieStore.clearMeal(props.mealType);
   showClearConfirm.value = false;
+}
+
+function getItemAiProvider(item) {
+  if (item.aiProvider) return item.aiProvider;
+  const src = (item.source || '').toLowerCase();
+  if (src.includes('groq')) return 'groq';
+  if (src.includes('gemini') || src.includes('google')) return 'gemini';
+  if (src.includes('ฐานข้อมูล') || src.includes('local') || src.includes('ไทย') || src.includes('off_')) return 'local';
+  return null;
 }
 </script>
 
@@ -491,12 +515,13 @@ function handleClearMeal() {
   cursor: pointer;
 }
 
-/* 1-Tap Quick Chips */
+/* 1-Tap Quick Chips (Warm Apricot / Honey Amber Theme) */
 .quick-chips-wrapper {
-  background: var(--bg-app, #F9F9F6);
-  border: 1px solid var(--border-subtle, #E8ECE9);
+  background: linear-gradient(135deg, #FFFDF7 0%, #FFF4E5 100%);
+  border: 1px solid #FED7AA;
   border-radius: 14px;
   padding: 0.55rem 0.75rem;
+  box-shadow: 0 2px 8px rgba(249, 115, 22, 0.04);
 }
 
 .quick-chips-header {
@@ -507,14 +532,14 @@ function handleClearMeal() {
 }
 
 .quick-title {
-  font-size: 0.75rem;
+  font-size: 0.76rem;
   font-weight: 800;
-  color: var(--primary-forest, #154238);
+  color: #C2410C;
 }
 
 .quick-sub {
   font-size: 0.68rem;
-  color: var(--text-muted, #52665C);
+  color: #9A3412;
 }
 
 .quick-chips-scroll {
@@ -532,36 +557,66 @@ function handleClearMeal() {
   gap: 0.3rem;
   padding: 0.35rem 0.65rem;
   background: #FFFFFF;
-  border: 1px solid #E2E8F0;
+  border: 1px solid #FDBA74;
   border-radius: 999px;
   font-size: 0.76rem;
-  font-weight: 600;
-  color: #1E293B;
+  font-weight: 700;
+  color: #7C2D12;
   cursor: pointer;
   white-space: nowrap;
   transition: all 0.15s ease;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  box-shadow: 0 1px 3px rgba(249, 115, 22, 0.06);
 }
 
 .btn-quick-chip:hover {
-  background: #F0FDF4;
-  border-color: #86EFAC;
-  color: #15803D;
+  background: #FFEDD5;
+  border-color: #FB923C;
+  color: #9A3412;
   transform: translateY(-1px);
 }
 
 .chip-plus {
   font-weight: 900;
-  color: var(--primary-forest, #154238);
+  color: #EA580C;
 }
 
 .chip-cal {
   font-size: 0.65rem;
-  background: var(--primary-light, #EBF3F0);
-  color: var(--primary-forest, #154238);
-  padding: 1px 5px;
+  background: #FFEDD5;
+  color: #C2410C;
+  padding: 1px 6px;
   border-radius: 999px;
   font-weight: 800;
+}
+
+/* AI Provider Badges (Groq / Gemini / Local) */
+.mini-ai-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.mini-ai-badge.badge-groq {
+  background: #FFF1EE;
+  border: 1px solid #FFCCBC;
+  color: #D83B20;
+}
+
+.mini-ai-badge.badge-gemini {
+  background: #EEF4FF;
+  border: 1px solid #C7D9FE;
+  color: #1A56DB;
+}
+
+.mini-ai-badge.badge-local {
+  background: #F0FDF4;
+  border: 1px solid #BBF7D0;
+  color: #15803D;
 }
 
 /* Meal Items List */

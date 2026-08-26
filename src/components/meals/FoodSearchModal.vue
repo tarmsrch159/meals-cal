@@ -34,7 +34,7 @@
           ref="searchInputRef"
           type="text" 
           v-model="searchQuery" 
-          placeholder="ค้นหาอาหาร เช่น ข้าว, ไก่, สลัด..." 
+          placeholder="ค้นหาหรือพิมพ์ชื่อเมนูเพื่อวิเคราะห์ AI..." 
           class="modern-search-input"
           @keyup.enter="triggerSearch"
           autocomplete="off"
@@ -46,6 +46,18 @@
           @click="clearQuery"
         >
           ✕
+        </button>
+        <button 
+          type="button" 
+          class="btn-ai-search-action" 
+          :class="{ loading: isSearchingAI }"
+          @click="askGeminiExplicit"
+          title="ค้นหาและวิเคราะห์สารอาหารด้วย AI (Groq / Gemini)"
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
+          </svg>
+          <span>ค้นหาด้วย AI</span>
         </button>
         <button 
           type="button" 
@@ -199,11 +211,11 @@
           </div>
         </div>
 
-        <!-- 2. AI Gemini Estimate Banner (When typing) -->
+        <!-- 2. AI Estimate Banner (When typing) -->
         <div class="ai-trigger-banner" v-if="searchQuery.trim().length >= 2 && !isSearchingAI && !aiResult">
           <div class="ai-banner-content">
             <div class="ai-text">
-              <strong>คำนวณด้วย AI Gemini:</strong>
+              <strong>วิเคราะห์โภชนาการด้วย AI:</strong>
               <span>"{{ searchQuery.trim() }}"</span>
             </div>
           </div>
@@ -212,7 +224,8 @@
             class="btn-ask-gemini" 
             @click="askGeminiExplicit"
           >
-            วิเคราะห์ทันที
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+            <span>วิเคราะห์ทันที</span>
           </button>
         </div>
 
@@ -225,10 +238,22 @@
           </div>
         </div>
 
-        <!-- AI Result Highlight -->
+        <!-- AI Result Highlight with Provider Logo -->
         <div v-if="aiResult" class="food-item-card ai-card">
           <div class="card-top">
-            <span class="food-badge-ai">AI Gemini</span>
+            <span v-if="aiResult.aiProvider === 'groq'" class="ai-provider-pill badge-groq">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="6" fill="#F55036"/><path d="M12 5C8.13 5 5 8.13 5 12s3.13 7 7 7 7-3.13 7-7h-7v2.5h4.24c-.65 1.77-2.36 3-4.24 3-2.48 0-4.5-2.02-4.5-4.5S9.52 7.5 12 7.5c1.15 0 2.2.43 3 1.15l1.77-1.77C15.54 5.76 13.86 5 12 5z" fill="#FFFFFF"/></svg>
+              <span>Groq AI ({{ aiResult.model || 'Llama 3.3' }})</span>
+            </span>
+            <span v-else-if="aiResult.aiProvider === 'gemini'" class="ai-provider-pill badge-gemini">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 2C12 7.52 7.52 12 2 12C7.52 12 12 16.48 12 22C12 16.48 16.48 12 22 12C16.48 12 12 7.52 12 2Z" fill="#4E80EE"/></svg>
+              <span>Google Gemini ({{ aiResult.model || 'Flash' }})</span>
+            </span>
+            <span v-else class="ai-provider-pill badge-local">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+              <span>คลังข้อมูลไทย (Local)</span>
+            </span>
+
             <div class="serving-stepper">
               <button class="btn-step font-num" @click="adjustPortion(aiResult, -0.5)">-</button>
               <span class="step-val font-num">{{ aiResult.multiplier || 1 }}x</span>
@@ -263,7 +288,21 @@
             class="food-item-card"
           >
             <div class="card-top">
-              <span class="food-cat-badge">{{ item.category }}</span>
+              <div class="card-top-badges">
+                <span class="food-cat-badge">{{ item.category }}</span>
+                <span v-if="item.aiProvider === 'groq' || (item.source && item.source.toLowerCase().includes('groq'))" class="ai-provider-pill badge-groq">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="6" fill="#F55036"/><path d="M12 5C8.13 5 5 8.13 5 12s3.13 7 7 7 7-3.13 7-7h-7v2.5h4.24c-.65 1.77-2.36 3-4.24 3-2.48 0-4.5-2.02-4.5-4.5S9.52 7.5 12 7.5c1.15 0 2.2.43 3 1.15l1.77-1.77C15.54 5.76 13.86 5 12 5z" fill="#FFFFFF"/></svg>
+                  <span>Groq</span>
+                </span>
+                <span v-else-if="item.aiProvider === 'gemini' || (item.source && (item.source.toLowerCase().includes('gemini') || item.source.toLowerCase().includes('google')))" class="ai-provider-pill badge-gemini">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M12 2C12 7.52 7.52 12 2 12C7.52 12 12 16.48 12 22C12 16.48 16.48 12 22 12C16.48 12 12 7.52 12 2Z" fill="#4E80EE"/></svg>
+                  <span>Gemini</span>
+                </span>
+                <span v-else-if="item.source && item.source.includes('ฐานข้อมูล')" class="ai-provider-pill badge-local">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+                  <span>คลังไทย</span>
+                </span>
+              </div>
               <div class="serving-stepper">
                 <button class="btn-step font-num" @click="adjustPortion(item, -0.5)">-</button>
                 <span class="step-val font-num">{{ item.multiplier || 1 }}x</span>
@@ -429,23 +468,36 @@ const filteredResults = computed(() => {
   return localResults.value.slice(0, 15);
 });
 
+let searchAiDebounceTimer = null;
+
 watch(searchQuery, (newVal) => {
   const q = newVal.trim();
+  if (searchAiDebounceTimer) clearTimeout(searchAiDebounceTimer);
+
   if (!q) {
     localResults.value = THAI_FOOD_DATABASE.map(item => ({ ...item, multiplier: 1 }));
     aiResult.value = null;
     return;
   }
   localResults.value = searchLocalFood(q).map(item => ({ ...item, multiplier: 1 }));
+
+  // Auto-trigger AI calculation with 500ms debounce
+  if (q.length >= 2) {
+    searchAiDebounceTimer = setTimeout(() => {
+      askGeminiExplicit();
+    }, 500);
+  }
 });
 
 function clearQuery() {
+  if (searchAiDebounceTimer) clearTimeout(searchAiDebounceTimer);
   searchQuery.value = '';
   aiResult.value = null;
 }
 
 function triggerSearch() {
-  if (filteredResults.value.length === 0 && searchQuery.value.trim()) {
+  if (searchQuery.value.trim()) {
+    if (searchAiDebounceTimer) clearTimeout(searchAiDebounceTimer);
     askGeminiExplicit();
   }
 }
@@ -615,7 +667,7 @@ function closeModal() {
 
 .modern-search-input {
   width: 100%;
-  padding: 0.8rem 4.5rem 0.8rem 2.6rem;
+  padding: 0.8rem 8.5rem 0.8rem 2.6rem;
   border-radius: 16px;
   border: 1.5px solid #E2E8F0;
   background: var(--bg-app, #F9F9F6);
@@ -633,25 +685,56 @@ function closeModal() {
 
 .btn-clear-query {
   position: absolute;
-  right: 42px;
+  right: 126px;
   top: 50%;
   transform: translateY(-50%);
   background: #CBD5E1;
   color: #FFFFFF;
   border: none;
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
+.btn-ai-search-action {
+  position: absolute;
+  right: 42px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0.32rem 0.65rem;
+  background: linear-gradient(135deg, #FF6B4A 0%, #F55036 100%);
+  color: #FFFFFF;
+  border: none;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(245, 80, 54, 0.25);
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.btn-ai-search-action:hover {
+  transform: translateY(-50%) scale(1.03);
+  box-shadow: 0 3px 8px rgba(245, 80, 54, 0.35);
+}
+
+.btn-ai-search-action.loading {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
 .btn-scan-shortcut {
   position: absolute;
-  right: 10px;
+  right: 8px;
   top: 50%;
   transform: translateY(-50%);
   background: var(--primary-light, #EBF3F0);
@@ -987,6 +1070,13 @@ function closeModal() {
   align-items: center;
 }
 
+.card-top-badges {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
 .food-cat-badge {
   font-size: 0.7rem;
   font-weight: 700;
@@ -996,13 +1086,33 @@ function closeModal() {
   border-radius: 6px;
 }
 
-.food-badge-ai {
-  font-size: 0.72rem;
-  font-weight: 800;
-  background: #EDE9FE;
-  color: #6D28D9;
+.ai-provider-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   padding: 2px 7px;
   border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.ai-provider-pill.badge-groq {
+  background: #FFF1EE;
+  border: 1px solid #FFCCBC;
+  color: #D83B20;
+}
+
+.ai-provider-pill.badge-gemini {
+  background: #EEF4FF;
+  border: 1px solid #C7D9FE;
+  color: #1A56DB;
+}
+
+.ai-provider-pill.badge-local {
+  background: #F0FDF4;
+  border: 1px solid #BBF7D0;
+  color: #15803D;
 }
 
 .serving-stepper {

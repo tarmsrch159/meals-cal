@@ -87,7 +87,7 @@
             <!-- AI Scanner Radar Effect while scanning -->
             <div class="scanner-laser" v-if="isAnalyzing">
               <div class="laser-line"></div>
-              <div class="laser-radar-tag">AI Vision กำลังวิเคราะห์วัตถุดิบและคำนวณแคลอรี่...</div>
+              <div class="laser-radar-tag">AI Vision กำลังวิเคราะห์วัตถุดิบและคำนวณแคลอรี่... ({{ elapsedSeconds }}s)</div>
             </div>
 
             <!-- Retake / Change image button -->
@@ -101,11 +101,55 @@
             </button>
           </div>
 
+          <!-- Error Alert Card when API fails -->
+          <div v-if="errorMessage && !isAnalyzing && !analyzedResult" class="scan-error-card">
+            <div class="error-icon-box">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+            </div>
+            <div class="error-msg-content">
+              <h4>เรียกใช้ API Key ไม่สำเร็จ</h4>
+              <p>{{ errorMessage }}</p>
+            </div>
+            <div class="error-actions-row">
+              <button 
+                type="button" 
+                class="btn-retry-scan font-num" 
+                @click="startAiVisionScan(imageBase64, imageMime)"
+              >
+                🔄 ลองใหม่อีกครั้ง
+              </button>
+              <button 
+                type="button" 
+                class="btn-fallback-local" 
+                @click="applyLocalEstimateFallback"
+              >
+                💡 ใช้ระบบประมาณการไทย
+              </button>
+            </div>
+          </div>
+
           <!-- AI Analysis Result Card -->
           <div v-if="analyzedResult" class="analysis-result-card">
             <div class="result-header">
               <div class="result-title-group">
-                <span class="ai-badge">วิเคราะห์สำเร็จ</span>
+                <div class="ai-badge-row">
+                  <span v-if="analyzedResult.aiProvider === 'groq'" class="scanner-ai-badge badge-groq">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="6" fill="#F55036"/><path d="M12 5C8.13 5 5 8.13 5 12s3.13 7 7 7 7-3.13 7-7h-7v2.5h4.24c-.65 1.77-2.36 3-4.24 3-2.48 0-4.5-2.02-4.5-4.5S9.52 7.5 12 7.5c1.15 0 2.2.43 3 1.15l1.77-1.77C15.54 5.76 13.86 5 12 5z" fill="#FFFFFF"/></svg>
+                    <span>Groq AI Vision ({{ analyzedResult.model || 'Vision' }})</span>
+                  </span>
+                  <span v-else-if="analyzedResult.aiProvider === 'gemini'" class="scanner-ai-badge badge-gemini">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 2C12 7.52 7.52 12 2 12C7.52 12 12 16.48 12 22C12 16.48 16.48 12 22 12C16.48 12 12 7.52 12 2Z" fill="#4E80EE"/></svg>
+                    <span>Google Gemini Vision ({{ analyzedResult.model || 'Flash' }})</span>
+                  </span>
+                  <span v-else class="scanner-ai-badge badge-local">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+                    <span>ระบบประมาณการโภชนาการ (Local)</span>
+                  </span>
+                </div>
                 <input 
                   type="text" 
                   v-model="analyzedResult.name" 
@@ -192,9 +236,9 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { calorieStore, state } from '../../stores/useCalorieStore.js';
-import { analyzeFoodPhotoWithGemini } from '../../services/nutritionApi.js';
+import { analyzeFoodPhotoWithGemini, fallbackLocalEstimate } from '../../services/nutritionApi.js';
 
 const fileInputRef = ref(null);
 const targetMeal = ref(state.selectedMealType || 'breakfast');
@@ -205,9 +249,15 @@ const isAnalyzing = ref(false);
 const analyzedResult = ref(null);
 const errorMessage = ref('');
 const selectedMultiplier = ref(1);
+const elapsedSeconds = ref(0);
+let timerInterval = null;
 
 onMounted(() => {
   targetMeal.value = state.selectedMealType || 'breakfast';
+});
+
+onUnmounted(() => {
+  if (timerInterval) clearInterval(timerInterval);
 });
 
 // Sample presets with realistic food base64 / generated canvases for one-click testing
@@ -285,42 +335,113 @@ function triggerCameraCapture() {
   }
 }
 
-function onFileSelected(e) {
+function compressImageForVision(file) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+      img.onload = () => {
+        const MAX_DIM = 720;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_DIM) {
+            height = Math.round((height * MAX_DIM) / width);
+            width = MAX_DIM;
+          }
+        } else {
+          if (height > MAX_DIM) {
+            width = Math.round((width * MAX_DIM) / height);
+            height = MAX_DIM;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.72);
+        const base64 = dataUrl.split(',')[1];
+        resolve({ dataUrl, base64, mimeType: 'image/jpeg' });
+      };
+      img.onerror = () => reject(new Error('ไม่สามารถประมวลผลรูปภาพได้'));
+      img.src = e.target.result;
+    };
+    reader.onerror = () => reject(new Error('ไม่สามารถอ่านไฟล์รูปภาพได้'));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function onFileSelected(e) {
   const file = e.target.files?.[0];
   if (!file) return;
 
   errorMessage.value = '';
-  imageMime.value = file.type || 'image/jpeg';
 
-  const reader = new FileReader();
-  reader.onload = (ev) => {
-    const fullDataUrl = ev.target.result;
-    imagePreview.value = fullDataUrl;
-    
-    // Extract raw base64 without prefix
-    const base64Data = fullDataUrl.split(',')[1];
-    imageBase64.value = base64Data;
+  try {
+    const compressed = await compressImageForVision(file);
+    imagePreview.value = compressed.dataUrl;
+    imageBase64.value = compressed.base64;
+    imageMime.value = compressed.mimeType;
 
-    // Trigger AI Vision scan
-    startAiVisionScan(base64Data, imageMime.value);
-  };
-  reader.readAsDataURL(file);
+    // Trigger AI Vision scan with lightweight compressed image
+    startAiVisionScan(compressed.base64, compressed.mimeType);
+  } catch (err) {
+    console.error('Image compression error:', err);
+    errorMessage.value = err.message || 'ไม่สามารถประมวลผลรูปภาพได้';
+    isAnalyzing.value = false;
+  }
 }
 
 async function startAiVisionScan(base64, mime) {
   isAnalyzing.value = true;
   analyzedResult.value = null;
   errorMessage.value = '';
+  elapsedSeconds.value = 0;
+
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    elapsedSeconds.value += 1;
+  }, 1000);
 
   try {
     const res = await analyzeFoodPhotoWithGemini(base64, mime);
+    if (!res) {
+      throw new Error('ไม่สามารถวิเคราะห์รูปภาพได้ กรุณาลองใหม่อีกครั้ง');
+    }
     analyzedResult.value = res;
+    if (res.isNotFood) {
+      calorieStore.showToast('⚠️ AI ตรวจไม่พบอาหารที่ชัดเจนในภาพ คุณสามารถปรับแก้ชื่อเมนูและสารอาหารได้', 'info');
+    } else {
+      calorieStore.showToast(`✨ วิเคราะห์อาหารสำเร็จ: ${res.name}`, 'success');
+    }
   } catch (err) {
     console.error('Vision analysis error:', err);
-    errorMessage.value = err.message || 'ไม่สามารถวิเคราะห์ภาพได้';
+    errorMessage.value = err.message || 'เรียกใช้ API Key ไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่อหรือ API Key';
+    calorieStore.showToast('เรียกใช้ API Key ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง', 'error');
   } finally {
     isAnalyzing.value = false;
+    if (timerInterval) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+    }
   }
+}
+
+function applyLocalEstimateFallback() {
+  const localRes = fallbackLocalEstimate('อาหารจากรูปถ่าย (ประมาณการ)');
+  analyzedResult.value = {
+    ...localRes,
+    name: 'อาหารจานเดียว (จากรูปภาพ)',
+    servingSize: '1 จาน (350g)',
+    healthTip: 'ประมาณการโภชนาการจากสูตรอาหารไทยมาตรฐาน คุณสามารถแก้ไขตัวเลขได้ตามต้องการ'
+  };
+  errorMessage.value = '';
+  calorieStore.showToast('ใช้งานระบบประมาณการโภชนาการเรียบร้อย');
 }
 
 function loadSamplePreset(sample) {
@@ -361,7 +482,9 @@ function loadSamplePreset(sample) {
     analyzedResult.value = {
       ...sample.mock,
       id: 'sample_' + Date.now(),
-      source: 'Gemini Vision AI'
+      aiProvider: 'gemini',
+      model: 'Gemini 2.5 Flash Vision',
+      source: 'Google Gemini Vision (2.5 Flash)'
     };
     isAnalyzing.value = false;
   }, 700);
@@ -714,6 +837,86 @@ function closeModal() {
   cursor: pointer;
 }
 
+/* Error Alert Card */
+.scan-error-card {
+  background: #FEF2F2;
+  border: 1px solid #FECACA;
+  border-radius: 18px;
+  padding: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.6rem;
+}
+
+.error-icon-box {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #FEE2E2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.error-msg-content h4 {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #991B1B;
+  margin: 0 0 0.25rem;
+}
+
+.error-msg-content p {
+  font-size: 0.8rem;
+  color: #B91C1C;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.error-actions-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 0.4rem;
+}
+
+.btn-retry-scan {
+  background: #DC2626;
+  color: #FFFFFF;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.25);
+  transition: all 0.15s ease;
+}
+
+.btn-fallback-local {
+  background: #FFFFFF;
+  color: #1E293B;
+  border: 1.5px solid #CBD5E1;
+  padding: 0.5rem 0.9rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-fallback-local:hover {
+  background: #F1F5F9;
+  border-color: #94A3B8;
+}
+
+.btn-retry-scan:hover {
+  background: #B91C1C;
+  transform: translateY(-1px);
+}
+
 /* Result Card */
 .analysis-result-card {
   background: #ffffff;
@@ -730,15 +933,40 @@ function closeModal() {
   margin-bottom: 0.9rem;
 }
 
-.ai-badge {
+.ai-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 0.35rem;
+}
+
+.scanner-ai-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 6px;
   font-size: 0.72rem;
   font-weight: 700;
-  color: var(--primary-forest, #154238);
-  background: var(--primary-light, #EBF3F0);
-  padding: 2px 8px;
-  border-radius: 6px;
-  display: inline-block;
-  margin-bottom: 0.25rem;
+  line-height: 1.2;
+}
+
+.scanner-ai-badge.badge-groq {
+  background: #FFF1EE;
+  border: 1px solid #FFCCBC;
+  color: #D83B20;
+}
+
+.scanner-ai-badge.badge-gemini {
+  background: #EEF4FF;
+  border: 1px solid #C7D9FE;
+  color: #1A56DB;
+}
+
+.scanner-ai-badge.badge-local {
+  background: #F0FDF4;
+  border: 1px solid #BBF7D0;
+  color: #15803D;
 }
 
 .edit-name-input {

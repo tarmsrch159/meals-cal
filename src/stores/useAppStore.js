@@ -1,4 +1,5 @@
 import { reactive, watch } from 'vue';
+import { getGeminiApiKey } from '../services/nutritionApi.js';
 
 const STORAGE_KEY = 'doolae_app_state_v2';
 const HEALTH_STORAGE_KEY = 'doolae_health_data';
@@ -644,7 +645,7 @@ export function createAppStore() {
 
   // Helper: Call Google Gemini REST API directly with Multimodal/Chat support
   const callGeminiChatApi = async (userText) => {
-    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+    const apiKey = getGeminiApiKey();
     if (!apiKey || typeof apiKey !== 'string' || apiKey.trim() === '' || apiKey.includes('your_gemini_api_key')) {
       return null; // Triggers fallback seamlessly
     }
@@ -707,13 +708,10 @@ ${healthSummary}
 
     // List of active Google Gemini model endpoints
     const models = [
-      'gemini-3.5-flash',
-      'gemini-flash-lite-latest',
-      'gemini-3.5-flash-lite',
       'gemini-2.5-flash',
-      'gemini-flash-latest',
+      'gemini-3.5-flash',
       'gemini-3.7-flash',
-      'gemini-pro-latest'
+      'gemini-flash-latest'
     ];
 
     for (const model of models) {
@@ -769,7 +767,7 @@ ${healthSummary}
 
     try {
       // 1. Try Gemini Vision OCR if file is an image and key is available
-      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      const apiKey = getGeminiApiKey();
       if (apiKey && apiKey.trim() && !apiKey.includes('your_gemini_api_key') && file && file.type?.startsWith('image/')) {
         try {
           const base64Data = await new Promise((resolve, reject) => {

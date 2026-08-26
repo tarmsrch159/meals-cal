@@ -51,9 +51,22 @@
         </span>
         <span class="tip-text">{{ coachData.nutritionTip }}</span>
       </div>
-      <span class="coach-source-tag font-num" v-if="coachData.source">
-        ขับเคลื่อนโดย {{ coachData.source }}
-      </span>
+      <!-- AI Provider Attribution Badge with Official Logo -->
+      <div class="coach-source-footer" v-if="coachData.source">
+        <span class="source-label">วิเคราะห์โดย:</span>
+        <span v-if="getCoachProvider(coachData) === 'groq'" class="coach-ai-badge badge-groq">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="6" fill="#F55036"/><path d="M12 5C8.13 5 5 8.13 5 12s3.13 7 7 7 7-3.13 7-7h-7v2.5h4.24c-.65 1.77-2.36 3-4.24 3-2.48 0-4.5-2.02-4.5-4.5S9.52 7.5 12 7.5c1.15 0 2.2.43 3 1.15l1.77-1.77C15.54 5.76 13.86 5 12 5z" fill="#FFFFFF"/></svg>
+          <span>Groq AI Cloud ({{ coachData.model || 'Llama 3.3' }})</span>
+        </span>
+        <span v-else-if="getCoachProvider(coachData) === 'gemini'" class="coach-ai-badge badge-gemini">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M12 2C12 7.52 7.52 12 2 12C7.52 12 12 16.48 12 22C12 16.48 16.48 12 22 12C16.48 12 12 7.52 12 2Z" fill="#4E80EE"/></svg>
+          <span>Google Gemini ({{ coachData.model || 'Flash' }})</span>
+        </span>
+        <span v-else class="coach-ai-badge badge-local">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+          <span>ระบบโภชนาการไทย (Local)</span>
+        </span>
+      </div>
     </div>
 
     <!-- Action & Target Meal Selector -->
@@ -91,7 +104,7 @@
         </span>
         <span v-else class="loading-state">
           <span class="spinner-dot"></span>
-          <span>Gemini AI กำลังคำนวณสารอาหาร...</span>
+          <span>AI กำลังคำนวณและประมวลผลสารอาหาร...</span>
         </span>
       </button>
     </div>
@@ -237,6 +250,14 @@ async function fetchAiRecommendations() {
   }
 }
 
+function getCoachProvider(data) {
+  if (data?.aiProvider) return data.aiProvider;
+  const src = (data?.source || '').toLowerCase();
+  if (src.includes('groq')) return 'groq';
+  if (src.includes('gemini') || src.includes('google')) return 'gemini';
+  return 'local';
+}
+
 function addRecommendedMeal(rec) {
   calorieStore.addMealItem(selectedSlot.value, {
     name: rec.name,
@@ -249,7 +270,9 @@ function addRecommendedMeal(rec) {
     sodium: rec.sodium || 500,
     servingSize: rec.servingSize || '1 จาน',
     healthTip: rec.reason || '',
-    source: 'AI Coach แนะนำ'
+    aiProvider: coachData.value?.aiProvider || 'local',
+    model: coachData.value?.model || '',
+    source: coachData.value?.source || 'AI Coach แนะนำ'
   }, 1);
 }
 </script>
@@ -411,13 +434,47 @@ function addRecommendedMeal(rec) {
   white-space: nowrap;
 }
 
-.coach-source-tag {
-  font-size: 0.65rem;
+.coach-source-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.35rem;
+  margin-top: 0.6rem;
+  padding-top: 0.4rem;
+  border-top: 1px dashed rgba(255, 255, 255, 0.12);
+}
+
+.source-label {
+  font-size: 0.68rem;
+  color: #A3C2B6;
+}
+
+.coach-ai-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.coach-ai-badge.badge-groq {
+  background: rgba(245, 80, 54, 0.15);
+  border: 1px solid rgba(245, 80, 54, 0.4);
+  color: #FF7A64;
+}
+
+.coach-ai-badge.badge-gemini {
+  background: rgba(78, 128, 238, 0.15);
+  border: 1px solid rgba(78, 128, 238, 0.4);
+  color: #93C5FD;
+}
+
+.coach-ai-badge.badge-local {
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.4);
   color: #6EE7B7;
-  display: block;
-  margin-top: 0.4rem;
-  text-align: right;
-  opacity: 0.8;
 }
 
 /* Recommend Action Box */

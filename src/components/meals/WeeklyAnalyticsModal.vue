@@ -114,32 +114,60 @@
         <div class="details-split-grid">
           <!-- Average Macro Split Card -->
           <div class="split-card">
-            <h4 class="card-mini-title">สัดส่วนสารอาหารเฉลี่ย/วัน</h4>
+            <div class="split-card-header">
+              <h4 class="card-mini-title">สัดส่วนสารอาหารเฉลี่ย/วัน</h4>
+              <span class="macro-total-badge font-num">รวม {{ Math.round((stats.avgCarbs * 4) + (stats.avgProtein * 4) + (stats.avgFat * 9)) }} kcal</span>
+            </div>
+
             <div class="macro-split-bars">
               <!-- Carb -->
-              <div class="macro-stat-row">
-                <div class="m-tag-circle carb"></div>
-                <div class="m-stat-text">
-                  <span class="m-name">คาร์โบไฮเดรต</span>
-                  <span class="m-qty font-num">{{ stats.avgCarbs }}g <small>({{ carbCaloriesPercent }}% ของพลังงาน)</small></span>
+              <div class="macro-stat-item">
+                <div class="m-stat-top">
+                  <div class="m-name-group">
+                    <span class="m-tag-circle carb"></span>
+                    <span class="m-name">คาร์โบไฮเดรต</span>
+                  </div>
+                  <div class="m-val-group font-num">
+                    <span class="m-qty">{{ stats.avgCarbs }}g</span>
+                    <span class="m-pct-badge carb">({{ carbCaloriesPercent }}%)</span>
+                  </div>
+                </div>
+                <div class="m-bar-track">
+                  <div class="m-bar-fill carb" :style="{ width: `${carbCaloriesPercent}%` }"></div>
                 </div>
               </div>
 
               <!-- Protein -->
-              <div class="macro-stat-row">
-                <div class="m-tag-circle pro"></div>
-                <div class="m-stat-text">
-                  <span class="m-name">โปรตีน</span>
-                  <span class="m-qty font-num">{{ stats.avgProtein }}g <small>({{ proteinCaloriesPercent }}% ของพลังงาน)</small></span>
+              <div class="macro-stat-item">
+                <div class="m-stat-top">
+                  <div class="m-name-group">
+                    <span class="m-tag-circle pro"></span>
+                    <span class="m-name">โปรตีน</span>
+                  </div>
+                  <div class="m-val-group font-num">
+                    <span class="m-qty">{{ stats.avgProtein }}g</span>
+                    <span class="m-pct-badge pro">({{ proteinCaloriesPercent }}%)</span>
+                  </div>
+                </div>
+                <div class="m-bar-track">
+                  <div class="m-bar-fill pro" :style="{ width: `${proteinCaloriesPercent}%` }"></div>
                 </div>
               </div>
 
               <!-- Fat -->
-              <div class="macro-stat-row">
-                <div class="m-tag-circle fat"></div>
-                <div class="m-stat-text">
-                  <span class="m-name">ไขมัน</span>
-                  <span class="m-qty font-num">{{ stats.avgFat }}g <small>({{ fatCaloriesPercent }}% ของพลังงาน)</small></span>
+              <div class="macro-stat-item">
+                <div class="m-stat-top">
+                  <div class="m-name-group">
+                    <span class="m-tag-circle fat"></span>
+                    <span class="m-name">ไขมัน</span>
+                  </div>
+                  <div class="m-val-group font-num">
+                    <span class="m-qty">{{ stats.avgFat }}g</span>
+                    <span class="m-pct-badge fat">({{ fatCaloriesPercent }}%)</span>
+                  </div>
+                </div>
+                <div class="m-bar-track">
+                  <div class="m-bar-fill fat" :style="{ width: `${fatCaloriesPercent}%` }"></div>
                 </div>
               </div>
             </div>
@@ -147,7 +175,10 @@
 
           <!-- Water Habit Consistency -->
           <div class="split-card">
-            <h4 class="card-mini-title">ความสม่ำเสมอในการดื่มน้ำ</h4>
+            <div class="split-card-header">
+              <h4 class="card-mini-title">ความสม่ำเสมอในการดื่มน้ำ</h4>
+              <span class="water-met-badge font-num">{{ daysMetWater }}/7 วัน</span>
+            </div>
             <div class="water-days-grid">
               <div 
                 v-for="day in stats.days" 
@@ -161,7 +192,7 @@
               </div>
             </div>
             <p class="water-sub-insight">
-              ดื่มน้ำครบ 8 แก้ว {{ daysMetWater }} จาก 7 วันที่ผ่านมา 💧
+              ดื่มน้ำครบเป้าหมาย <strong>{{ daysMetWater }} จาก 7 วัน</strong> ที่ผ่านมา 💧
             </p>
           </div>
         </div>
@@ -545,108 +576,168 @@ const daysMetWater = computed(() => {
 /* Details Split Grid */
 .details-split-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.6rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .split-card {
   background: #f8fafc;
   border: 1px solid #e2e8f0;
-  border-radius: 16px;
-  padding: 0.9rem;
+  border-radius: 18px;
+  padding: 1.1rem 1.15rem;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.split-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.85rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .card-mini-title {
-  font-size: 0.82rem;
+  font-size: 0.88rem;
   font-weight: 800;
   color: #0f172a;
-  margin: 0 0 0.7rem;
+  margin: 0;
+}
+
+.macro-total-badge, .water-met-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--primary-forest, #154238);
+  background: var(--primary-light, #EBF3F0);
+  padding: 2px 8px;
+  border-radius: 999px;
 }
 
 .macro-split-bars {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.75rem;
 }
 
-.macro-stat-row {
+.macro-stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.m-stat-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.82rem;
+}
+
+.m-name-group {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.45rem;
+  white-space: nowrap;
 }
 
 .m-tag-circle {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
+  flex-shrink: 0;
 }
 
 .m-tag-circle.carb { background: var(--macro-carb, #3B82F6); }
 .m-tag-circle.pro { background: var(--macro-protein, #8B5CF6); }
 .m-tag-circle.fat { background: var(--macro-fat, #F59E0B); }
 
-.m-stat-text {
-  display: flex;
-  justify-content: space-between;
-  width: 100%;
-  font-size: 0.72rem;
+.m-name {
+  color: #0f172a;
+  font-weight: 700;
 }
 
-.m-name {
-  color: #475569;
-  font-weight: 600;
+.m-val-group {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  white-space: nowrap;
 }
 
 .m-qty {
-  font-weight: 700;
+  font-weight: 800;
   color: #0f172a;
 }
 
-.m-qty small {
+.m-pct-badge {
+  font-size: 0.72rem;
+  font-weight: 600;
   color: #64748b;
-  font-weight: 500;
 }
+
+.m-bar-track {
+  width: 100%;
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.m-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+
+.m-bar-fill.carb { background: linear-gradient(90deg, #60A5FA 0%, #3B82F6 100%); }
+.m-bar-fill.pro { background: linear-gradient(90deg, #A78BFA 0%, #8B5CF6 100%); }
+.m-bar-fill.fat { background: linear-gradient(90deg, #FBBF24 0%, #F59E0B 100%); }
 
 /* Water Days Grid */
 .water-days-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 2px;
-  margin-bottom: 0.6rem;
+  gap: 0.3rem;
+  margin-bottom: 0.7rem;
 }
 
 .water-day-pill {
   background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  padding: 0.3rem 0.1rem;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 0.4rem 0.15rem;
   text-align: center;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 2px;
+  transition: all 0.15s;
 }
 
 .water-day-pill.met {
   background: #eff6ff;
-  border-color: #93c5fd;
+  border-color: #60a5fa;
   color: #1d4ed8;
+  font-weight: 800;
 }
 
 .w-day-name {
-  font-size: 0.6rem;
+  font-size: 0.65rem;
   color: #64748b;
+  font-weight: 600;
 }
 
 .w-glasses-num {
-  font-size: 0.65rem;
-  font-weight: 700;
+  font-size: 0.72rem;
+  font-weight: 800;
 }
 
 .water-sub-insight {
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   color: #64748b;
   margin: 0;
+  line-height: 1.4;
 }
 
 /* Quick Jump Banner */
@@ -676,9 +767,9 @@ const daysMetWater = computed(() => {
   background: var(--primary-forest, #154238);
   color: #ffffff;
   border: none;
-  padding: 0.4rem 0.8rem;
-  border-radius: 8px;
-  font-size: 0.78rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: 10px;
+  font-size: 0.8rem;
   font-weight: 700;
   cursor: pointer;
   transition: background 0.15s;
@@ -686,5 +777,23 @@ const daysMetWater = computed(() => {
 
 .btn-view-day:hover {
   background: var(--primary-dark, #0D281E);
+}
+
+@media (max-width: 580px) {
+  .details-split-grid {
+    grid-template-columns: 1fr;
+  }
+  .bar-fill {
+    width: 22px;
+  }
+  .m-num {
+    font-size: 1.1rem;
+  }
+  .metrics-summary-grid {
+    gap: 0.35rem;
+  }
+  .metric-box {
+    padding: 0.65rem 0.45rem;
+  }
 }
 </style>
