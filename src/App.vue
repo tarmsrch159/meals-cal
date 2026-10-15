@@ -43,8 +43,6 @@ import CalorieDashboard from './views/CalorieDashboard.vue';
 </script>
 
 <style>
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600;700&family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Thai:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=Prompt:wght@300;400;500;600;700;800;900&display=swap');
-
 /* Modern Energetic Sports Theme Design Tokens */
 :root {
   --primary-forest: #154238;

@@ -12,99 +12,17 @@ function getTodayDateString() {
   return `${year}-${month}-${day}`;
 }
 
-// Initial Sample Meals for Today so the user immediately sees a lively and functional tracker
 const todayStr = getTodayDateString();
 
 const defaultState = {
   selectedDate: todayStr,
   
   // Meals categorized by date and meal slot: { [dateStr]: { breakfast: [], lunch: [], dinner: [], snack: [] } }
-  mealsByDate: {
-    [todayStr]: {
-      breakfast: [
-        {
-          id: 'init_1',
-          name: 'โจ๊กหมูใส่ไข่',
-          calories: 320,
-          protein: 18,
-          carbs: 42,
-          fat: 9,
-          fiber: 1,
-          sodium: 720,
-          servingSize: '1 ชาม (400g)',
-          multiplier: 1,
-          time: '08:15',
-          source: 'ฐานข้อมูลอาหารไทย'
-        },
-        {
-          id: 'init_2',
-          name: 'อเมริกาโน่เย็น (ไม่ใส่น้ำตาล)',
-          calories: 5,
-          protein: 0.3,
-          carbs: 0.8,
-          fat: 0.1,
-          fiber: 0,
-          sodium: 5,
-          servingSize: '1 แก้ว',
-          multiplier: 1,
-          time: '08:30',
-          source: 'ฐานข้อมูลอาหารไทย'
-        }
-      ],
-      lunch: [
-        {
-          id: 'init_3',
-          name: 'ข้าวมันไก่ตอน',
-          calories: 596,
-          protein: 28,
-          carbs: 68,
-          fat: 24,
-          fiber: 1.5,
-          sodium: 780,
-          servingSize: '1 จาน (350g)',
-          multiplier: 1,
-          time: '12:30',
-          source: 'ฐานข้อมูลอาหารไทย'
-        }
-      ],
-      dinner: [
-        {
-          id: 'init_4',
-          name: 'สุกี้น้ำรวมมิตร (กุ้ง/หมู/ไก่)',
-          calories: 320,
-          protein: 26,
-          carbs: 34,
-          fat: 8,
-          fiber: 4.5,
-          sodium: 980,
-          servingSize: '1 ชาม (450g)',
-          multiplier: 1,
-          time: '18:45',
-          source: 'ฐานข้อมูลอาหารไทย'
-        }
-      ],
-      snack: [
-        {
-          id: 'init_5',
-          name: 'กล้วยหอมทอง 7-Eleven (1 ลูก)',
-          calories: 110,
-          protein: 1.2,
-          carbs: 27,
-          fat: 0.3,
-          fiber: 3.0,
-          sodium: 1,
-          servingSize: '1 ลูก',
-          multiplier: 1,
-          time: '15:00',
-          source: '7-Eleven'
-        }
-      ]
-    }
-  },
+  mealsByDate: {},
 
   // Water intake in glasses (250ml per glass)
   waterByDate: {
-    [todayStr]: 5
+    [todayStr]: 0
   },
 
   // User Profile & Macro Targets
@@ -335,27 +253,45 @@ export const calorieStore = {
     return state.mealsByDate[dateStr];
   },
 
-  addMealItem(mealType, foodItem, multiplier = 1) {
+  addMealItem(mealType, foodItem, multiplier = 1, portionUnit = 'portion', portionAmount = null) {
     this.ensureDateEntry(state.selectedDate);
     
     const now = new Date();
     const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
+    // คำนวณน้ำหนักกรัมมาตรฐาน (baseGrams) จาก servingSize หรือค่าเริ่มต้น 300g
+    let baseGrams = foodItem.baseGrams || 300;
+    if (foodItem.servingSize) {
+      const match = foodItem.servingSize.match(/(\d+)\s*(?:g|กรัม)/i);
+      if (match) baseGrams = Number(match[1]) || 300;
+    }
+
+    const calcMultiplier = Math.max(0.01, Number(multiplier) || 1);
+    const unit = portionUnit || foodItem.portionUnit || 'portion';
+    const amount = portionAmount !== null 
+      ? Number(portionAmount) 
+      : (foodItem.portionAmount !== undefined ? Number(foodItem.portionAmount) : (unit === 'gram' ? Math.round(calcMultiplier * baseGrams) : calcMultiplier));
+
     const newItem = {
       id: 'meal_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
       name: foodItem.name,
       nameEn: foodItem.nameEn || '',
-      calories: Math.round(Number(foodItem.calories) || 0),
+      calories: Number(foodItem.calories) || 0,
       protein: Math.round((Number(foodItem.protein) || 0) * 10) / 10,
       carbs: Math.round((Number(foodItem.carbs) || 0) * 10) / 10,
       fat: Math.round((Number(foodItem.fat) || 0) * 10) / 10,
       fiber: Math.round((Number(foodItem.fiber) || 0) * 10) / 10,
       sodium: Math.round(Number(foodItem.sodium) || 0),
       servingSize: foodItem.servingSize || '1 หน่วยบริโภค',
-      multiplier: Number(multiplier) || 1,
+      baseGrams,
+      portionUnit: unit,
+      portionAmount: amount,
+      multiplier: calcMultiplier,
       time: timeStr,
       healthTip: foodItem.healthTip || '',
-      source: foodItem.source || 'เพิ่มเอง'
+      source: foodItem.source || 'เพิ่มเอง',
+      aiProvider: foodItem.aiProvider || null,
+      model: foodItem.model || null
     };
 
     state.mealsByDate[state.selectedDate][mealType].push(newItem);
@@ -384,8 +320,43 @@ export const calorieStore = {
     const list = state.mealsByDate[state.selectedDate][mealType];
     const item = list.find(it => it.id === itemId);
     if (item) {
-      item.multiplier = Math.max(0.25, Math.min(10, Number(newMultiplier) || 1));
+      const mult = Math.max(0.01, Math.min(20, Number(newMultiplier) || 1));
+      item.multiplier = mult;
+      if (!item.baseGrams) item.baseGrams = 300;
+      if (item.portionUnit === 'gram') {
+        item.portionAmount = Math.round(mult * item.baseGrams * 10) / 10;
+      } else {
+        item.portionAmount = mult;
+      }
     }
+  },
+
+  updateMealItemPortion(mealType, itemId, { multiplier, portionUnit, portionAmount }) {
+    this.ensureDateEntry(state.selectedDate);
+    const list = state.mealsByDate[state.selectedDate][mealType];
+    const item = list.find(it => it.id === itemId);
+    if (item) {
+      if (multiplier !== undefined) item.multiplier = Math.max(0.01, Math.min(20, Number(multiplier) || 1));
+      if (portionUnit !== undefined) item.portionUnit = portionUnit;
+      if (portionAmount !== undefined) item.portionAmount = Math.max(0.01, Number(portionAmount) || 1);
+    }
+  },
+
+  updateMealItem(mealType, itemId, updates) {
+    this.ensureDateEntry(state.selectedDate);
+    const item = state.mealsByDate[state.selectedDate][mealType].find(it => it.id === itemId);
+    if (!item) return;
+    Object.assign(item, {
+      name: String(updates.name || '').trim(),
+      servingSize: String(updates.servingSize || '1 หน่วยบริโภค').trim(),
+      calories: Math.max(0, Number(updates.calories) || 0),
+      protein: Math.max(0, Number(updates.protein) || 0),
+      carbs: Math.max(0, Number(updates.carbs) || 0),
+      fat: Math.max(0, Number(updates.fat) || 0),
+      fiber: Math.max(0, Number(updates.fiber) || 0),
+      sodium: Math.max(0, Number(updates.sodium) || 0)
+    });
+    this.showToast('บันทึกการแก้ไขอาหารแล้ว');
   },
 
   clearMeal(mealType, dateStr = state.selectedDate) {
@@ -856,4 +827,3 @@ export const calorieStore = {
     this.showToast('รีเซ็ตข้อมูลทั้งหมดแล้ว', 'info');
   }
 };
-

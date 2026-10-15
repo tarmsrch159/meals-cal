@@ -213,13 +213,13 @@ export function fallbackLocalEstimate(query) {
 /**
  * วิเคราะห์รูปภาพอาหารผ่าน AI Vision (Google Gemini Flash Vision)
  */
-export async function analyzeFoodPhotoWithGemini(base64Data, mimeType = 'image/jpeg') {
+export async function analyzeFoodPhotoWithGemini(base64Data, mimeType = 'image/jpeg', foodHint = '') {
   if (!base64Data) {
     throw new Error('ไม่พบข้อมูลรูปภาพสำหรับวิเคราะห์');
   }
 
   const prompt = `คุณคือนักโภชนาการ AI ผู้เชี่ยวชาญด้านอาหารไทยและโภชนาการสากล
-วิเคราะห์ภาพอาหารนี้อย่างละเอียด ระบุชื่อเมนูภาษาไทย, วัตถุดิบที่ตรวจพบ, สัดส่วน, และประมาณการพลังงานสารอาหาร
+วิเคราะห์ภาพอาหารนี้อย่างละเอียด ระบุชื่อเมนูภาษาไทย, วัตถุดิบที่ตรวจพบ, สัดส่วน, และประมาณการพลังงานสารอาหาร${foodHint ? `\nข้อมูลที่ผู้ใช้ระบุเกี่ยวกับอาหาร: "${foodHint}" ใช้ข้อมูลนี้ช่วยระบุเมนูและรายละเอียด แต่ให้ยึดสิ่งที่เห็นในภาพเป็นหลัก หากข้อมูลไม่ตรงกับภาพให้แจ้งใน health_tip สั้น ๆ` : ''}
 ตอบกลับเป็น JSON Object รูปแบบนี้เท่านั้น (ห้ามใส่ Markdown หรือข้อความอื่นนอกเหนือจาก JSON):
 {
   "meal_name": "ชื่อเมนูภาษาไทยที่ชัดเจน",
@@ -267,10 +267,9 @@ export async function analyzeFoodPhotoWithGemini(base64Data, mimeType = 'image/j
           servingSize: parsed.estimated_portion || '1 จาน',
           ingredients: parsed.ingredients_detected || [],
           healthScore: isNotFood ? 0 : (parsed.health_score || 7),
-          healthTip: parsed.health_tip || (isNotFood ? 'กรุณาถ่ายภาพอาหารให้อยู่ในตำแหน่งที่ชัดเจน' : 'รับประทานอาหารให้หลากหลาย'),
-          aiProvider: visionResult.provider || 'gemini',
+          aiProvider: visionResult.provider || 'openrouter',
           model: visionResult.model,
-          source: `${visionResult.provider === 'gemini' ? 'Google Gemini Vision' : 'Groq Vision'} (${visionResult.model})`,
+          source: `${visionResult.provider === 'openrouter' ? 'OpenRouter Vision' : visionResult.provider === 'gemini' ? 'Google Gemini Vision' : 'Groq Vision'} (${visionResult.model})`,
           isNotFood
         };
       }
@@ -465,12 +464,15 @@ export async function searchOpenFoodFacts(query) {
 
     const url = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query.trim())}&search_simple=1&action=process&json=1&page_size=8`;
     
-    const res = await fetch(url, {
-      signal: controller.signal,
-      headers: { 'Accept': 'application/json' }
-    });
-
-    clearTimeout(timeoutId);
+    let res;
+    try {
+      res = await fetch(url, {
+        signal: controller.signal,
+        headers: { 'Accept': 'application/json' }
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     if (!res.ok) return [];
     const data = await res.json();

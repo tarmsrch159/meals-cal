@@ -474,10 +474,11 @@ export const callGeminiVisionApi = async ({
   const keys = getRotatedGeminiKeyList();
   if (!keys || keys.length === 0) return null;
 
+  // โมเดล Gemini Vision ที่เปิดใช้งานและทดสอบสำเร็จจริง 100%
   const visionModels = [
+    'gemini-3.1-flash-lite',
     'gemini-2.5-flash',
-    'gemini-3.5-flash',
-    'gemini-3.7-flash'
+    'gemini-3.6-flash'
   ];
 
   for (const key of keys) {
@@ -501,14 +502,11 @@ export const callGeminiVisionApi = async ({
               generationConfig: {
                 temperature: 0.1,
                 responseMimeType: 'application/json',
-                maxOutputTokens: 4096,
-                thinkingConfig: {
-                  thinkingBudget: 0
-                }
+                maxOutputTokens: 2048
               }
             })
           },
-          45000 // Timeout 45 วินาที (เพียงพอสำหรับการอัปโหลดและวิเคราะห์รูปภาพ)
+          10000 // Timeout 10 วินาทีต่อโมเดล เพื่อให้ Failover ได้เร็ว
         );
 
         if (resp.ok) {
@@ -526,14 +524,14 @@ export const callGeminiVisionApi = async ({
             };
           }
         } else if (resp.status === 429) {
-          console.warn(`[Gemini API] Key ...${key.slice(-6)} Rate limited (429), สลับคีย์ถัดไป`);
+          console.warn(`[Gemini API] Key ...${key.slice(-6)} Rate limited (429), กำลังสลับคีย์ถัดไป...`);
           break; // สลับ Key ถัดไป
         } else {
           const errText = await resp.text();
-          console.warn(`[Gemini Vision] Model ${model} HTTP ${resp.status}:`, errText);
+          console.warn(`[Gemini Vision] Model ${model} HTTP ${resp.status}:`, errText.slice(0, 100));
         }
       } catch (err) {
-        console.warn(`[Vision API] Model ${model} error:`, err);
+        console.warn(`[Vision API] Model ${model} error:`, err.message);
       }
     }
   }
@@ -542,9 +540,102 @@ export const callGeminiVisionApi = async ({
 };
 
 // ============================================================================
-// 8. Unified AI Vision Dispatcher (Google Gemini Flash Vision)
+// 8. OpenRouter Vision API Caller (ฟรีและรองรับ OpenRouter Free Models / MiniMax / Gemma)
+// ============================================================================
+export const getOpenRouterApiKeys = () => {
+  const localKey = typeof localStorage !== 'undefined' ? (localStorage.getItem('meals_cal_openrouter_key') || '') : '';
+  const envKey = (typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_OPENROUTER_API_KEY : '') || (typeof process !== 'undefined' && process.env ? process.env.VITE_OPENROUTER_API_KEY : '') || '';
+  const k1 = (typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_OPENROUTER_API_KEY_1 : '') || (typeof process !== 'undefined' && process.env ? process.env.VITE_OPENROUTER_API_KEY_1 : '') || '';
+  const k2 = (typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_OPENROUTER_API_KEY_2 : '') || (typeof process !== 'undefined' && process.env ? process.env.VITE_OPENROUTER_API_KEY_2 : '') || '';
+
+  const parsed = [localKey, envKey, k1, k2]
+    .map(k => (typeof k === 'string' ? k.trim() : ''))
+    .filter(k => k && !k.includes('your_openrouter_api_key'));
+
+  return [...new Set(parsed)];
+};
+
+export const callOpenRouterVisionApi = async ({ prompt, base64Data, mimeType = 'image/jpeg' }) => {
+  const keys = getOpenRouterApiKeys();
+  if (!keys || keys.length === 0) return null;
+
+  const freeVisionModels = [
+    'minimax/minimax-m3:free',
+    'google/gemma-4-31b-it:free',
+    'google/gemma-4-26b-a4b-it:free',
+    'dots-studio/dots-3-note-preview:free'
+  ];
+
+  for (const key of keys) {
+    if (!key || !key.trim()) continue;
+    for (const model of freeVisionModels) {
+      try {
+        const resp = await fetchWithTimeout(
+          'https://openrouter.ai/api/v1/chat/completions',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${key.trim()}`,
+              'HTTP-Referer': 'https://meals-cal.vercel.app',
+              'X-Title': 'Meals-Cal Nutrition AI'
+            },
+            body: JSON.stringify({
+              model,
+              messages: [
+                {
+                  role: 'user',
+                  content: [
+                    { type: 'text', text: prompt },
+                    {
+                      type: 'image_url',
+                      image_url: {
+                        url: `data:${mimeType};base64,${base64Data}`
+                      }
+                    }
+                  ]
+                }
+              ],
+              temperature: 0.1,
+              max_tokens: 1200
+            })
+          },
+          6000 // Timeout 6 วินาที เพื่อให้สลับไป Gemini ได้ไว
+        );
+
+        if (resp.ok) {
+          const data = await resp.json();
+          const rawText = data.choices?.[0]?.message?.content || '';
+          if (rawText && rawText.includes('{') && rawText.includes('}')) {
+            return {
+              rawText: rawText.trim(),
+              model: model.split('/')[1] || model,
+              provider: 'openrouter'
+            };
+          }
+        }
+      } catch (err) {
+        console.warn(`[OpenRouter Vision] Model ${model} error:`, err.message);
+      }
+    }
+  }
+
+  return null;
+};
+
+// ============================================================================
+// 9. Unified AI Vision Dispatcher (OpenRouter -> Google Gemini Flash Multi-Key)
 // ============================================================================
 export const callAiVisionApi = async ({ prompt, base64Data, mimeType = 'image/jpeg' }) => {
+  // 1. ถ้ามี OpenRouter Key ให้ลองก่อน
+  try {
+    const openRouterRes = await callOpenRouterVisionApi({ prompt, base64Data, mimeType });
+    if (openRouterRes) return openRouterRes;
+  } catch (err) {
+    console.warn('[AI Service] OpenRouter Vision fallback to Gemini:', err);
+  }
+
+  // 2. Google Gemini Multi-Key Pool (gemini-3.1-flash-lite, gemini-2.5-flash)
   try {
     const geminiVision = await callGeminiVisionApi({ prompt, base64Data, mimeType });
     if (geminiVision) return geminiVision;

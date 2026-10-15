@@ -101,6 +101,26 @@
             </button>
           </div>
 
+          <div v-if="!analyzedResult" class="vision-hint-form">
+            <label for="vision-food-hint">ชื่อหรือรายละเอียดอาหาร (ไม่บังคับ)</label>
+            <input
+              id="vision-food-hint"
+              v-model="foodHint"
+              type="text"
+              placeholder="เช่น ข้าวกะเพราไก่ไข่ดาว ไม่ใส่น้ำตาล"
+              :disabled="isAnalyzing"
+              @keyup.enter="startAiVisionScan(imageBase64, imageMime)"
+            />
+            <button
+              v-if="!isAnalyzing"
+              type="button"
+              class="btn-upload-action camera vision-submit"
+              @click="startAiVisionScan(imageBase64, imageMime)"
+            >
+              วิเคราะห์รูปอาหาร
+            </button>
+          </div>
+
           <!-- Error Alert Card when API fails -->
           <div v-if="errorMessage && !isAnalyzing && !analyzedResult" class="scan-error-card">
             <div class="error-icon-box">
@@ -134,10 +154,16 @@
 
           <!-- AI Analysis Result Card -->
           <div v-if="analyzedResult" class="analysis-result-card">
+            <p class="ai-estimate-notice">ตัวเลขโภชนาการเป็นค่าประมาณ โปรดตรวจสอบและปรับปริมาณก่อนบันทึก</p>
+            <p class="ai-estimate-notice">ตัวเลขโภชนาการเป็นค่าประมาณ โปรดตรวจสอบและปรับปริมาณก่อนบันทึก</p>
             <div class="result-header">
               <div class="result-title-group">
                 <div class="ai-badge-row">
-                  <span v-if="analyzedResult.aiProvider === 'groq'" class="scanner-ai-badge badge-groq">
+                  <span v-if="analyzedResult.aiProvider === 'openrouter'" class="scanner-ai-badge badge-openrouter">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#6366F1"/><path d="m8 12 3 3 5-6" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <span>OpenRouter Vision ({{ analyzedResult.model || 'Free' }})</span>
+                  </span>
+                  <span v-else-if="analyzedResult.aiProvider === 'groq'" class="scanner-ai-badge badge-groq">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="6" fill="#F55036"/><path d="M12 5C8.13 5 5 8.13 5 12s3.13 7 7 7 7-3.13 7-7h-7v2.5h4.24c-.65 1.77-2.36 3-4.24 3-2.48 0-4.5-2.02-4.5-4.5S9.52 7.5 12 7.5c1.15 0 2.2.43 3 1.15l1.77-1.77C15.54 5.76 13.86 5 12 5z" fill="#FFFFFF"/></svg>
                     <span>Groq AI Vision ({{ analyzedResult.model || 'Vision' }})</span>
                   </span>
@@ -200,20 +226,98 @@
               {{ analyzedResult.healthTip }}
             </div>
 
-            <!-- Portion Selector -->
-            <div class="portion-selector-row">
-              <span class="portion-label">สัดส่วนที่รับประทาน:</span>
-              <div class="portion-buttons">
-                <button 
-                  v-for="mult in [0.5, 1, 1.5, 2]" 
-                  :key="mult"
-                  type="button" 
-                  class="btn-portion-chip"
-                  :class="{ active: selectedMultiplier === mult }"
-                  @click="selectedMultiplier = mult"
-                >
-                  {{ mult }}x
-                </button>
+            <!-- Portion & Unit Selector with Decimal Input -->
+            <div class="portion-selector-card">
+              <div class="portion-header-row">
+                <span class="portion-title-text">สัดส่วนที่รับประทาน:</span>
+                
+                <div class="portion-unit-tabs">
+                  <button 
+                    type="button" 
+                    class="btn-unit-tab"
+                    :class="{ active: scannerPortionUnit === 'portion' }"
+                    @click="setScannerPortionUnit('portion')"
+                  >
+                    จาน / ที่
+                  </button>
+                  <button 
+                    type="button" 
+                    class="btn-unit-tab"
+                    :class="{ active: scannerPortionUnit === 'gram' }"
+                    @click="setScannerPortionUnit('gram')"
+                  >
+                    กรัม (g)
+                  </button>
+                </div>
+              </div>
+
+              <!-- Stepper & Direct Decimal Input -->
+              <div class="portion-input-row">
+                <div class="portion-stepper-box">
+                  <button 
+                    type="button" 
+                    class="btn-scanner-step font-num" 
+                    @click="stepScannerPortion(scannerPortionUnit === 'gram' ? -25 : -0.25)"
+                  >
+                    -
+                  </button>
+                  <div class="scanner-input-wrap">
+                    <input 
+                      type="number" 
+                      v-model.number="scannerPortionAmount" 
+                      @input="onScannerPortionInput"
+                      :step="scannerPortionUnit === 'gram' ? '5' : '0.1'"
+                      min="0.01" 
+                      class="scanner-portion-num font-num"
+                    />
+                    <span class="scanner-unit-label">{{ scannerPortionUnit === 'gram' ? 'g' : 'จาน' }}</span>
+                  </div>
+                  <button 
+                    type="button" 
+                    class="btn-scanner-step font-num" 
+                    @click="stepScannerPortion(scannerPortionUnit === 'gram' ? 25 : 0.25)"
+                  >
+                    +
+                  </button>
+                </div>
+
+                <!-- Quick Presets -->
+                <div class="portion-quick-chips font-num">
+                  <template v-if="scannerPortionUnit === 'portion'">
+                    <button 
+                      v-for="amt in [0.5, 1, 1.5, 2]" 
+                      :key="amt"
+                      type="button" 
+                      class="btn-portion-chip"
+                      :class="{ active: scannerPortionAmount === amt }"
+                      @click="setScannerPortionPreset(amt, 'portion')"
+                    >
+                      {{ amt }}x
+                    </button>
+                  </template>
+                  <template v-else>
+                    <button 
+                      v-for="g in [150, 250, 350, 500]" 
+                      :key="g"
+                      type="button" 
+                      class="btn-portion-chip"
+                      :class="{ active: scannerPortionAmount === g }"
+                      @click="setScannerPortionPreset(g, 'gram')"
+                    >
+                      {{ g }}g
+                    </button>
+                  </template>
+                </div>
+              </div>
+
+              <!-- Portion Equivalence Note -->
+              <div class="portion-subnote font-num">
+                <span v-if="scannerPortionUnit === 'gram'">
+                  ≈ {{ scannerPortionAmount }} กรัม (เทียบเท่า {{ (selectedMultiplier).toFixed(2) }} จานมาตรฐาน)
+                </span>
+                <span v-else>
+                  ≈ {{ scannerPortionAmount }} จาน (น้ำหนักประมาณ {{ Math.round(selectedMultiplier * scannerBaseGrams) }} กรัม)
+                </span>
               </div>
             </div>
 
@@ -236,7 +340,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { calorieStore, state } from '../../stores/useCalorieStore.js';
 import { analyzeFoodPhotoWithGemini, fallbackLocalEstimate } from '../../services/nutritionApi.js';
 
@@ -245,12 +349,80 @@ const targetMeal = ref(state.selectedMealType || 'breakfast');
 const imagePreview = ref(null);
 const imageBase64 = ref('');
 const imageMime = ref('image/jpeg');
+const foodHint = ref('');
 const isAnalyzing = ref(false);
 const analyzedResult = ref(null);
 const errorMessage = ref('');
 const selectedMultiplier = ref(1);
+const scannerPortionUnit = ref('portion'); // 'portion' | 'gram'
+const scannerPortionAmount = ref(1);
 const elapsedSeconds = ref(0);
 let timerInterval = null;
+
+function parseScannerBaseGrams(servingSize) {
+  if (!servingSize) return 300;
+  const match = String(servingSize).match(/(\d+)\s*(?:g|กรัม)/i);
+  if (match) return Number(match[1]) || 300;
+  return 300;
+}
+
+const scannerBaseGrams = computed(() => {
+  return parseScannerBaseGrams(analyzedResult.value?.servingSize);
+});
+
+function setScannerPortionUnit(unit) {
+  if (scannerPortionUnit.value === unit) return;
+  scannerPortionUnit.value = unit;
+  const baseGrams = scannerBaseGrams.value;
+
+  if (unit === 'gram') {
+    scannerPortionAmount.value = Math.round(selectedMultiplier.value * baseGrams * 10) / 10;
+  } else {
+    const raw = (Number(scannerPortionAmount.value) || baseGrams) / baseGrams;
+    scannerPortionAmount.value = Math.round(raw * 100) / 100;
+    selectedMultiplier.value = Math.max(0.01, scannerPortionAmount.value);
+  }
+}
+
+function onScannerPortionInput() {
+  const baseGrams = scannerBaseGrams.value;
+  const val = Math.max(0.01, Number(scannerPortionAmount.value) || 0.01);
+  scannerPortionAmount.value = val;
+
+  if (scannerPortionUnit.value === 'gram') {
+    selectedMultiplier.value = Math.max(0.01, val / baseGrams);
+  } else {
+    selectedMultiplier.value = val;
+  }
+}
+
+function stepScannerPortion(delta) {
+  const baseGrams = scannerBaseGrams.value;
+  const current = Number(scannerPortionAmount.value) || (scannerPortionUnit.value === 'gram' ? baseGrams : 1);
+  let next = Math.round((current + delta) * 100) / 100;
+
+  if (scannerPortionUnit.value === 'gram') {
+    if (next < 5) next = 5;
+    scannerPortionAmount.value = next;
+    selectedMultiplier.value = Math.max(0.01, next / baseGrams);
+  } else {
+    if (next < 0.1) next = 0.1;
+    if (next > 20) next = 20;
+    scannerPortionAmount.value = next;
+    selectedMultiplier.value = next;
+  }
+}
+
+function setScannerPortionPreset(amount, unit = 'portion') {
+  const baseGrams = scannerBaseGrams.value;
+  scannerPortionUnit.value = unit;
+  scannerPortionAmount.value = amount;
+  if (unit === 'gram') {
+    selectedMultiplier.value = Math.max(0.01, amount / baseGrams);
+  } else {
+    selectedMultiplier.value = amount;
+  }
+}
 
 onMounted(() => {
   targetMeal.value = state.selectedMealType || 'breakfast';
@@ -388,8 +560,7 @@ async function onFileSelected(e) {
     imageBase64.value = compressed.base64;
     imageMime.value = compressed.mimeType;
 
-    // Trigger AI Vision scan with lightweight compressed image
-    startAiVisionScan(compressed.base64, compressed.mimeType);
+    // Let the user describe the dish before sending the image to AI.
   } catch (err) {
     console.error('Image compression error:', err);
     errorMessage.value = err.message || 'ไม่สามารถประมวลผลรูปภาพได้';
@@ -409,7 +580,7 @@ async function startAiVisionScan(base64, mime) {
   }, 1000);
 
   try {
-    const res = await analyzeFoodPhotoWithGemini(base64, mime);
+    const res = await analyzeFoodPhotoWithGemini(base64, mime, foodHint.value.trim());
     if (!res) {
       throw new Error('ไม่สามารถวิเคราะห์รูปภาพได้ กรุณาลองใหม่อีกครั้ง');
     }
@@ -475,6 +646,7 @@ function loadSamplePreset(sample) {
   imagePreview.value = dataUrl;
   imageBase64.value = dataUrl.split(',')[1];
   imageMime.value = 'image/jpeg';
+  foodHint.value = sample.name;
 
   // Instant apply mock result with high visual fidelity
   isAnalyzing.value = true;
@@ -494,6 +666,7 @@ function resetImage() {
   imagePreview.value = null;
   imageBase64.value = '';
   analyzedResult.value = null;
+  foodHint.value = '';
   errorMessage.value = '';
   if (fileInputRef.value) fileInputRef.value.value = '';
 }
@@ -501,10 +674,18 @@ function resetImage() {
 function saveAnalyzedMeal() {
   if (!analyzedResult.value) return;
 
+  const baseGrams = scannerBaseGrams.value;
   calorieStore.addMealItem(
     targetMeal.value,
-    analyzedResult.value,
-    selectedMultiplier.value
+    {
+      ...analyzedResult.value,
+      baseGrams,
+      portionUnit: scannerPortionUnit.value,
+      portionAmount: scannerPortionAmount.value
+    },
+    selectedMultiplier.value,
+    scannerPortionUnit.value,
+    scannerPortionAmount.value
   );
 
   calorieStore.closeModal();
@@ -769,6 +950,37 @@ function closeModal() {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+}
+
+.vision-hint-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 0.9rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #f8fafc;
+}
+
+.vision-hint-form label {
+  color: #334155;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.vision-hint-form input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #fff;
+  color: #0f172a;
+  font: inherit;
+}
+
+.vision-submit {
+  align-self: flex-start;
 }
 
 .preview-img-box {
@@ -1089,39 +1301,145 @@ function closeModal() {
   line-height: 1.35;
 }
 
-.portion-selector-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.portion-selector-card {
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 14px;
+  padding: 0.8rem 0.9rem;
   margin-bottom: 1rem;
 }
 
-.portion-label {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: #475569;
+.portion-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.6rem;
 }
 
-.portion-buttons {
+.portion-title-text {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #334155;
+}
+
+.portion-unit-tabs {
   display: flex;
-  gap: 0.3rem;
+  background: #E2E8F0;
+  border-radius: 8px;
+  padding: 2px;
+}
+
+.btn-unit-tab {
+  border: none;
+  background: transparent;
+  padding: 2px 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #64748B;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-unit-tab.active {
+  background: #FFFFFF;
+  color: var(--primary-forest, #154238);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.portion-input-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.portion-stepper-box {
+  display: flex;
+  align-items: center;
+  background: #FFFFFF;
+  border: 1.5px solid #CBD5E1;
+  border-radius: 10px;
+  padding: 2px 4px;
+}
+
+.btn-scanner-step {
+  width: 24px;
+  height: 26px;
+  border: none;
+  background: transparent;
+  font-size: 1rem;
+  font-weight: 800;
+  color: #334155;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: background 0.1s;
+}
+
+.btn-scanner-step:hover {
+  background: #F1F5F9;
+}
+
+.scanner-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.scanner-portion-num {
+  width: 50px;
+  border: none;
+  background: transparent;
+  font-size: 0.88rem;
+  font-weight: 800;
+  text-align: center;
+  color: #0F1E17;
+  outline: none;
+}
+
+.scanner-unit-label {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #64748B;
+  margin-right: 4px;
+}
+
+.portion-quick-chips {
+  display: flex;
+  gap: 0.25rem;
 }
 
 .btn-portion-chip {
   padding: 0.3rem 0.6rem;
-  border: 1px solid #cbd5e1;
-  background: #ffffff;
-  border-radius: 6px;
-  font-size: 0.75rem;
+  border: 1px solid #CBD5E1;
+  background: #FFFFFF;
+  border-radius: 8px;
+  font-size: 0.74rem;
   font-weight: 700;
   color: #475569;
   cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-portion-chip:hover {
+  background: #F1F5F9;
+  border-color: #94A3B8;
 }
 
 .btn-portion-chip.active {
   background: var(--primary-forest, #154238);
   border-color: var(--primary-forest, #154238);
-  color: #ffffff;
+  color: #FFFFFF;
+}
+
+.portion-subnote {
+  margin-top: 0.45rem;
+  font-size: 0.72rem;
+  color: #64748B;
+  font-weight: 600;
 }
 
 .btn-confirm-save {

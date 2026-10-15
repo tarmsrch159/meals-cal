@@ -50,7 +50,7 @@
           </div>
 
           <div class="msg-bubble-card" :class="msg.sender === 'user' ? 'bubble-user' : 'bubble-ai'">
-            <div class="msg-text" v-html="formatMessageText(msg.text)"></div>
+            <div class="msg-text">{{ msg.text }}</div>
             <span class="msg-time">{{ msg.time }}</span>
           </div>
         </div>
@@ -146,11 +146,6 @@ const handleSend = async () => {
   }
 };
 
-const formatMessageText = (text) => {
-  if (!text) return '';
-  return text.replace(/\n/g, '<br>');
-};
-
 watch(() => state.showAiHealthChatModal, (val) => {
   if (val) {
     scrollToBottom();
@@ -187,6 +182,11 @@ watch(() => state.showAiHealthChatModal, (val) => {
   box-shadow: 0 20px 50px rgba(0, 119, 182, 0.18), 0 4px 16px rgba(0, 0, 0, 0.05);
   overflow: hidden;
   border: 1px solid rgba(0, 180, 216, 0.25);
+}
+
+.msg-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .ai-chat-header {

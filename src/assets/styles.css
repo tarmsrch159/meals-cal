@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600;700&family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Thai:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=Prompt:wght@300;400;500;600;700;800;900&display=swap');
-
 /* ==========================================================================
    ดูแล (Doo-Lae) - Generations Care & Transit
    Design System & Global Modern Styling (Vue 3 Responsive Web App)
@@ -74,6 +72,66 @@
   --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-spring: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
+
+/* Meals tracker edit form and calendar popover */
+.food-edit-form { display:grid; grid-template-columns:minmax(0,1.3fr) minmax(130px,1fr); gap:.7rem; padding:.9rem; border:1px solid #dce9e1; border-radius:14px; background:#f7faf7; }
+.food-edit-form label { display:grid; gap:.3rem; color:#52665c; font-size:.72rem; font-weight:700; }
+.food-edit-form input { box-sizing:border-box; width:100%; min-width:0; height:38px; padding:0 .65rem; border:1px solid #d7e2da; border-radius:9px; outline:none; background:#fff; color:#173e33; font:inherit; font-size:.84rem; }
+.food-edit-form input:focus { border-color:#7b9d8e; box-shadow:0 0 0 3px rgba(21,66,56,.09); }
+.food-edit-numbers { grid-column:1/-1; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.6rem; }
+.food-edit-form .confirm-actions { grid-column:1/-1; justify-content:flex-end; }
+.food-edit-form .btn-confirm-cancel,.food-edit-form .btn-confirm-delete { min-width:88px; padding:.55rem .9rem; border-radius:9px; font-size:.78rem; }
+.date-calendar-trigger { width:30px; height:30px; display:grid; place-items:center; padding:0; border:1px solid rgba(255,255,255,.2); border-radius:9px; background:rgba(255,255,255,.1); color:#d4ff32; cursor:pointer; transition:background .15s,transform .15s; }
+.date-calendar-trigger:hover { background:rgba(255,255,255,.2); transform:translateY(-1px); }
+.date-calendar-trigger svg { width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+.date-picker-banner { position:relative; }
+.calendar-popover { position:absolute; z-index:40; top:calc(100% + 8px); left:50%; width:min(320px,calc(100vw - 40px)); padding:14px; transform:translateX(-50%); border:1px solid #dce9e1; border-radius:18px; background:#fff; color:#173e33; box-shadow:0 18px 45px rgba(13,45,34,.22); }
+.calendar-heading { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.calendar-heading strong { color:#173e33; font-size:.94rem; font-weight:800; }
+.calendar-nav { width:30px; height:30px; border:0; border-radius:9px; background:#f1f6f2; color:#285c4c; font-size:1.35rem; line-height:1; cursor:pointer; }
+.calendar-nav:hover:not(:disabled) { background:#e4efe7; }
+.calendar-nav:disabled { opacity:.35; cursor:default; }
+.calendar-grid { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:3px; }
+.calendar-weekdays { margin-bottom:5px; color:#84958c; font-size:.68rem; font-weight:700; text-align:center; }
+.calendar-weekdays span { padding:5px 0; }
+.calendar-day { aspect-ratio:1; border:0; border-radius:10px; background:transparent; color:#334a40; font:inherit; font-size:.77rem; cursor:pointer; }
+.calendar-day:hover:not(:disabled) { background:#edf4ee; }
+.calendar-day.muted { color:#b4c0b9; }
+.calendar-day.selected { background:#d4ff32; color:#173e33; font-weight:900; box-shadow:0 3px 9px rgba(176,218,26,.28); }
+.calendar-day.today:not(.selected) { outline:1.5px solid #a8c5b3; outline-offset:-2px; font-weight:800; }
+.calendar-day:disabled { color:#d7ded9; cursor:default; }
+.calendar-today { display:block; margin:10px auto 0; padding:6px 12px; border:0; border-radius:999px; background:#edf4ee; color:#285c4c; font:inherit; font-size:.72rem; font-weight:800; cursor:pointer; }
+@media (max-width:420px) { .food-edit-form { grid-template-columns:1fr; } .food-edit-numbers { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+
+/* Meals tracker edit form and calendar popover */
+.food-edit-form { display:grid; grid-template-columns:minmax(0,1.3fr) minmax(130px,1fr); gap:.7rem; padding:.9rem; border:1px solid #dce9e1; border-radius:14px; background:#f7faf7; }
+.food-edit-form label { display:grid; gap:.3rem; color:#52665c; font-size:.72rem; font-weight:700; }
+.food-edit-form input { box-sizing:border-box; width:100%; min-width:0; height:38px; padding:0 .65rem; border:1px solid #d7e2da; border-radius:9px; outline:none; background:#fff; color:#173e33; font:inherit; font-size:.84rem; }
+.food-edit-form input:focus { border-color:#7b9d8e; box-shadow:0 0 0 3px rgba(21,66,56,.09); }
+.food-edit-numbers { grid-column:1/-1; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.6rem; }
+.food-edit-form .confirm-actions { grid-column:1/-1; justify-content:flex-end; }
+.food-edit-form .btn-confirm-cancel,.food-edit-form .btn-confirm-delete { min-width:88px; padding:.55rem .9rem; border-radius:9px; font-size:.78rem; }
+.date-calendar-trigger { width:30px; height:30px; display:grid; place-items:center; padding:0; border:1px solid rgba(255,255,255,.2); border-radius:9px; background:rgba(255,255,255,.1); color:#d4ff32; cursor:pointer; transition:background .15s,transform .15s; }
+.date-calendar-trigger:hover { background:rgba(255,255,255,.2); transform:translateY(-1px); }
+.date-calendar-trigger svg { width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+.date-picker-banner { position:relative; }
+.calendar-popover { position:absolute; z-index:40; top:calc(100% + 8px); left:50%; width:min(320px,calc(100vw - 40px)); padding:14px; transform:translateX(-50%); border:1px solid #dce9e1; border-radius:18px; background:#fff; color:#173e33; box-shadow:0 18px 45px rgba(13,45,34,.22); }
+.calendar-heading { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.calendar-heading strong { color:#173e33; font-size:.94rem; font-weight:800; }
+.calendar-nav { width:30px; height:30px; border:0; border-radius:9px; background:#f1f6f2; color:#285c4c; font-size:1.35rem; line-height:1; cursor:pointer; }
+.calendar-nav:hover:not(:disabled) { background:#e4efe7; }
+.calendar-nav:disabled { opacity:.35; cursor:default; }
+.calendar-grid { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:3px; }
+.calendar-weekdays { margin-bottom:5px; color:#84958c; font-size:.68rem; font-weight:700; text-align:center; }
+.calendar-weekdays span { padding:5px 0; }
+.calendar-day { aspect-ratio:1; border:0; border-radius:10px; background:transparent; color:#334a40; font:inherit; font-size:.77rem; cursor:pointer; }
+.calendar-day:hover:not(:disabled) { background:#edf4ee; }
+.calendar-day.muted { color:#b4c0b9; }
+.calendar-day.selected { background:#d4ff32; color:#173e33; font-weight:900; box-shadow:0 3px 9px rgba(176,218,26,.28); }
+.calendar-day.today:not(.selected) { outline:1.5px solid #a8c5b3; outline-offset:-2px; font-weight:800; }
+.calendar-day:disabled { color:#d7ded9; cursor:default; }
+.calendar-today { display:block; margin:10px auto 0; padding:6px 12px; border:0; border-radius:999px; background:#edf4ee; color:#285c4c; font:inherit; font-size:.72rem; font-weight:800; cursor:pointer; }
+@media (max-width:420px) { .food-edit-form { grid-template-columns:1fr; } .food-edit-numbers { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 
 /* Reset & Box Sizing */
 *, *::before, *::after {

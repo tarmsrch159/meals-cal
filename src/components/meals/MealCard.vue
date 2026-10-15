@@ -89,15 +89,12 @@
         <div 
           v-for="item in items" 
           :key="item.id" 
-          class="meal-item-row"
+          class="meal-item-card-modern"
         >
-          <div class="item-info">
-            <div class="item-name-wrap">
+          <!-- 1. Card Header: Dish Name, AI Badge, Action Icons -->
+          <div class="item-card-header">
+            <div class="item-title-group">
               <span class="item-name">{{ item.name }}</span>
-            </div>
-            
-            <div class="item-details">
-              <span class="item-serving">{{ item.servingSize }}</span>
 
               <!-- AI Provider Mini Badge -->
               <span v-if="getItemAiProvider(item) === 'groq'" class="mini-ai-badge badge-groq" title="วิเคราะห์โดย Groq AI">
@@ -108,37 +105,112 @@
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M12 2C12 7.52 7.52 12 2 12C7.52 12 12 16.48 12 22C12 16.48 16.48 12 22 12C16.48 12 12 7.52 12 2Z" fill="#4E80EE"/></svg>
                 <span>Gemini</span>
               </span>
+              <span v-else-if="getItemAiProvider(item) === 'openrouter'" class="mini-ai-badge badge-openrouter" title="วิเคราะห์โดย OpenRouter AI">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#6366F1"/><path d="m8 12 3 3 5-6" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <span>OpenRouter</span>
+              </span>
               <span v-else-if="getItemAiProvider(item) === 'local'" class="mini-ai-badge badge-local" title="ฐานข้อมูลอาหารไทย (Local)">
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
                 <span>Local</span>
               </span>
+            </div>
 
-              <span class="item-macros font-num">
-                (P: {{ (item.protein * (item.multiplier || 1)).toFixed(0) }}g • 
-                 C: {{ (item.carbs * (item.multiplier || 1)).toFixed(0) }}g • 
-                 F: {{ (item.fat * (item.multiplier || 1)).toFixed(0) }}g)
-              </span>
+            <!-- Top Right Action Icons -->
+            <div class="item-quick-actions">
+              <button type="button" class="btn-fav-item" @click.stop="startEditing(item)" title="แก้ไขข้อมูลอาหาร" aria-label="แก้ไขข้อมูลอาหาร">✎</button>
+              <!-- Favorite Toggle Button -->
+              <button 
+                type="button" 
+                class="btn-fav-item" 
+                :class="{ active: calorieStore.isFavorite(item.name) }"
+                @click.stop="calorieStore.toggleFavorite(item)" 
+                :title="calorieStore.isFavorite(item.name) ? 'นำออกจากเมนูโปรด' : 'บันทึกเป็นเมนูโปรด'"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" :fill="calorieStore.isFavorite(item.name) ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                </svg>
+              </button>
+
+              <!-- Delete Item Button -->
+              <button 
+                type="button" 
+                class="btn-remove-item" 
+                @click.stop="askRemoveItem(item)" 
+                title="ลบรายการนี้"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M18 6 6 18"/>
+                  <path d="m6 6 12 12"/>
+                </svg>
+              </button>
             </div>
           </div>
 
-          <div class="item-actions">
-            <!-- Portion Multiplier Control -->
-            <div class="multiplier-control">
+          <form v-if="editingItemId === item.id" class="food-edit-form" @submit.prevent="saveItem(item)">
+            <label class="food-edit-name">ชื่ออาหาร<input v-model="editForm.name" required maxlength="100" /></label>
+            <label class="food-edit-serving">หน่วยบริโภค<input v-model="editForm.servingSize" maxlength="80" /></label>
+            <div class="food-edit-numbers">
+              <label v-for="field in editFields" :key="field.key">{{ field.label }}<input v-model.number="editForm[field.key]" type="number" min="0" step="0.1" required /></label>
+            </div>
+            <div class="confirm-actions">
+              <button type="button" class="btn-confirm-cancel" @click="editingItemId = null">ยกเลิก</button>
+              <button type="submit" class="btn-confirm-delete">บันทึก</button>
+            </div>
+          </form>
+          <div v-if="pendingDeleteId === item.id" class="clear-confirm-banner">
+            <span class="confirm-text">ยืนยันลบ “{{ item.name }}” หรือไม่?</span>
+            <div class="confirm-actions">
+              <button type="button" class="btn-confirm-cancel" @click="pendingDeleteId = null">ยกเลิก</button>
+              <button type="button" class="btn-confirm-delete" @click="removeItem(item.id)">ลบรายการ</button>
+            </div>
+          </div>
+
+          <!-- 2. Sub-info row: Standard Serving & Macro distribution -->
+          <div class="item-subinfo-row">
+            <span class="item-serving-tag font-num">
+              {{ item.portionUnit === 'gram' ? `${item.portionAmount || Math.round((item.multiplier || 1) * (item.baseGrams || 300))} กรัม` : `${item.portionAmount || item.multiplier || 1} จาน (${Math.round((item.multiplier || 1) * (item.baseGrams || 300))}g)` }}
+            </span>
+            <span class="item-macros-inline font-num">
+              (P: {{ Math.round(item.protein * (item.multiplier || 1)) }}g • C: {{ Math.round(item.carbs * (item.multiplier || 1)) }}g • F: {{ Math.round(item.fat * (item.multiplier || 1)) }}g)
+            </span>
+          </div>
+
+          <!-- 3. Bottom Controls: Stepper & Unit Switcher on Left, Total Calories on Right -->
+          <div class="item-controls-bar">
+            <div class="multiplier-control-modern">
+              <button 
+                type="button" 
+                class="btn-unit-toggle font-num" 
+                @click.stop="toggleItemUnit(item)"
+                :title="'คลิกเพื่อสลับหน่วยเป็น ' + (item.portionUnit === 'gram' ? 'จาน' : 'กรัม')"
+              >
+                {{ item.portionUnit === 'gram' ? 'กรัม' : 'จาน' }}
+              </button>
+
               <button 
                 type="button" 
                 class="btn-mult font-num" 
-                @click.stop="adjustMultiplier(item, -0.5)"
-                :disabled="item.multiplier <= 0.5"
+                @click.stop="adjustMultiplier(item, item.portionUnit === 'gram' ? -25 : -0.25)"
                 title="ลดสัดส่วน"
               >
                 -
               </button>
-              <span class="mult-value font-num">{{ item.multiplier }}x</span>
+
+              <input 
+                type="number" 
+                class="mult-direct-input font-num" 
+                v-model="item.portionAmount"
+                @change="onPortionInputChange(item, item.portionAmount)"
+                @click.stop
+                :step="item.portionUnit === 'gram' ? '5' : '0.1'"
+                min="0.01"
+                title="พิมพ์กรอกสัดส่วนเป็นตัวเลขทศนิยมได้"
+              />
+
               <button 
                 type="button" 
                 class="btn-mult font-num" 
-                @click.stop="adjustMultiplier(item, 0.5)"
-                :disabled="item.multiplier >= 5"
+                @click.stop="adjustMultiplier(item, item.portionUnit === 'gram' ? 25 : 0.25)"
                 title="เพิ่มสัดส่วน"
               >
                 +
@@ -146,36 +218,10 @@
             </div>
 
             <!-- Total Calories for this item -->
-            <div class="item-calories font-num">
+            <div class="item-calories-badge font-num">
               <span class="item-cal-num">{{ Math.round(item.calories * (item.multiplier || 1)) }}</span>
               <span class="item-cal-unit">kcal</span>
             </div>
-
-            <!-- Favorite Toggle Button (Clean SVG Star) -->
-            <button 
-              type="button" 
-              class="btn-fav-item" 
-              :class="{ active: calorieStore.isFavorite(item.name) }"
-              @click.stop="calorieStore.toggleFavorite(item)" 
-              :title="calorieStore.isFavorite(item.name) ? 'นำออกจากเมนูโปรด' : 'บันทึกเป็นเมนูโปรด'"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" :fill="calorieStore.isFavorite(item.name) ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-              </svg>
-            </button>
-
-            <!-- Delete Item Button (Clean SVG X) -->
-            <button 
-              type="button" 
-              class="btn-remove-item" 
-              @click.stop="removeItem(item.id)" 
-              title="ลบรายการนี้"
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M18 6 6 18"/>
-                <path d="m6 6 12 12"/>
-              </svg>
-            </button>
           </div>
         </div>
       </div>
@@ -252,6 +298,14 @@ const props = defineProps({
 
 const isExpanded = ref(true);
 const showClearConfirm = ref(false);
+const editingItemId = ref(null);
+const pendingDeleteId = ref(null);
+const editFields = [
+  { key: 'calories', label: 'แคลอรี' }, { key: 'protein', label: 'โปรตีน (g)' },
+  { key: 'carbs', label: 'คาร์บ (g)' }, { key: 'fat', label: 'ไขมัน (g)' },
+  { key: 'fiber', label: 'ใยอาหาร (g)' }, { key: 'sodium', label: 'โซเดียม (mg)' }
+];
+const editForm = ref({ name: '', servingSize: '', calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sodium: 0 });
 
 const mealsData = computed(() => calorieStore.getMealsForDate());
 const items = computed(() => mealsData.value[props.mealType] || []);
@@ -287,15 +341,102 @@ function openQuickAdd() {
 }
 
 function removeItem(itemId) {
+  pendingDeleteId.value = null;
   calorieStore.removeMealItem(props.mealType, itemId);
 }
 
-function adjustMultiplier(item, delta) {
-  const current = item.multiplier || 1;
-  const next = Math.round((current + delta) * 10) / 10;
-  if (next >= 0.5 && next <= 5) {
-    calorieStore.updateMealItemMultiplier(props.mealType, item.id, next);
+function askRemoveItem(item) {
+  pendingDeleteId.value = item.id;
+}
+
+function startEditing(item) {
+  editForm.value = { ...item };
+  editingItemId.value = item.id;
+  pendingDeleteId.value = null;
+}
+
+function saveItem(item) {
+  if (!editForm.value.name.trim()) return;
+  calorieStore.updateMealItem(props.mealType, item.id, editForm.value);
+  editingItemId.value = null;
+}
+
+function parseItemBaseGrams(item) {
+  if (item.baseGrams) return item.baseGrams;
+  if (item.servingSize) {
+    const match = String(item.servingSize).match(/(\d+)\s*(?:g|กรัม)/i);
+    if (match) return Number(match[1]) || 300;
   }
+  return 300;
+}
+
+function getItemPortionAmount(item) {
+  if (item.portionAmount !== undefined && item.portionAmount !== null) return item.portionAmount;
+  const baseGrams = parseItemBaseGrams(item);
+  return item.portionUnit === 'gram' ? Math.round((item.multiplier || 1) * baseGrams) : (item.multiplier || 1);
+}
+
+function toggleItemUnit(item) {
+  const baseGrams = parseItemBaseGrams(item);
+  item.baseGrams = baseGrams;
+  const currentUnit = item.portionUnit || 'portion';
+  const newUnit = currentUnit === 'gram' ? 'portion' : 'gram';
+  item.portionUnit = newUnit;
+
+  if (newUnit === 'gram') {
+    item.portionAmount = Math.round((item.multiplier || 1) * baseGrams * 10) / 10;
+  } else {
+    item.portionAmount = Math.round((item.multiplier || 1) * 100) / 100;
+  }
+
+  calorieStore.updateMealItemPortion(props.mealType, item.id, {
+    multiplier: item.multiplier,
+    portionUnit: item.portionUnit,
+    portionAmount: item.portionAmount
+  });
+}
+
+function onPortionInputChange(item, rawVal) {
+  const baseGrams = parseItemBaseGrams(item);
+  item.baseGrams = baseGrams;
+  const val = Math.max(0.01, Number(rawVal) || 0.01);
+  item.portionAmount = val;
+
+  let mult = val;
+  if (item.portionUnit === 'gram') {
+    mult = val / baseGrams;
+  }
+  item.multiplier = Math.max(0.01, mult);
+
+  calorieStore.updateMealItemPortion(props.mealType, item.id, {
+    multiplier: item.multiplier,
+    portionUnit: item.portionUnit || 'portion',
+    portionAmount: item.portionAmount
+  });
+}
+
+function adjustMultiplier(item, delta) {
+  const baseGrams = parseItemBaseGrams(item);
+  item.baseGrams = baseGrams;
+  const unit = item.portionUnit || 'portion';
+  
+  if (unit === 'gram') {
+    const current = Number(item.portionAmount) || Math.round((item.multiplier || 1) * baseGrams);
+    const next = Math.max(5, Math.round((current + delta) * 10) / 10);
+    item.portionAmount = next;
+    item.multiplier = Math.max(0.01, next / baseGrams);
+  } else {
+    const current = Number(item.portionAmount) || (item.multiplier || 1);
+    const next = Math.max(0.1, Math.round((current + delta) * 100) / 100);
+    item.portionAmount = next;
+    item.multiplier = next;
+  }
+
+  calorieStore.updateMealItemPortion(props.mealType, item.id, {
+    multiplier: item.multiplier,
+    portionUnit: unit,
+    portionAmount: item.portionAmount
+  });
 }
 
 function addPresetItem(preset) {
@@ -623,102 +764,183 @@ function getItemAiProvider(item) {
 .meal-items-list {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.6rem;
 }
 
-.meal-item-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.65rem 0.85rem;
+.meal-item-card-modern {
   background: var(--bg-app, #F9F9F6);
   border-radius: 14px;
   border: 1px solid var(--border-subtle, #E8ECE9);
-}
-
-.item-info {
-  flex: 1;
-  min-width: 0;
-  margin-right: 0.5rem;
-}
-
-.item-name-wrap {
+  padding: 0.75rem 0.85rem;
   display: flex;
-  align-items: center;
-  gap: 0.4rem;
+  flex-direction: column;
+  gap: 0.45rem;
+  transition: all 0.2s ease;
 }
 
-.item-name {
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: var(--text-main, #0F1E17);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  line-height: 1.3;
+.meal-item-card-modern:hover {
+  background: #FFFFFF;
+  border-color: #CBD5E1;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
-.item-details {
+.food-edit-form { display:grid; grid-template-columns:minmax(0,1.3fr) minmax(130px,1fr); gap:.7rem; padding:.9rem; border:1px solid #DCE9E1; border-radius:14px; background:#F7FAF7; }
+.food-edit-form label { display:grid; gap:.3rem; color:#52665C; font-size:.72rem; font-weight:750; }
+.food-edit-form input { box-sizing:border-box; width:100%; min-width:0; height:38px; padding:0 .65rem; border:1px solid #D7E2DA; border-radius:9px; outline:none; background:#FFF; color:#173E33; font:inherit; font-size:.84rem; transition:border-color .15s,box-shadow .15s; }
+.food-edit-form input:focus { border-color:#7B9D8E; box-shadow:0 0 0 3px rgba(21,66,56,.09); }
+.food-edit-numbers { grid-column:1/-1; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.6rem; }
+.food-edit-form .confirm-actions { grid-column:1/-1; justify-content:flex-end; }
+.food-edit-form .btn-confirm-cancel,.food-edit-form .btn-confirm-delete { min-width:88px; padding:.55rem .9rem; border-radius:9px; font-size:.78rem; }
+@media (max-width:420px) { .food-edit-form { grid-template-columns:1fr; } .food-edit-numbers { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+
+.item-card-header {
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 0.4rem;
-  font-size: 0.72rem;
-  color: var(--text-muted, #52665C);
-  margin-top: 2px;
-  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
-.item-actions {
+.item-title-group {
   display: flex;
   align-items: center;
   gap: 0.45rem;
+  flex-wrap: wrap;
+  min-width: 0;
+  flex: 1;
+}
+
+.item-name {
+  font-size: 0.96rem;
+  font-weight: 800;
+  color: var(--text-main, #0F1E17);
+  line-height: 1.3;
+  word-break: break-word;
+}
+
+.item-quick-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
   flex-shrink: 0;
 }
 
-.multiplier-control {
+.item-subinfo-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  line-height: 1.35;
+}
+
+.item-serving-tag {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--primary-forest, #154238);
+  background: #EBF3F0;
+  padding: 1.5px 7px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.item-macros-inline {
+  font-size: 0.74rem;
+  color: var(--text-muted, #52665C);
+  white-space: nowrap;
+}
+
+.item-controls-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.1rem;
+  padding-top: 0.4rem;
+  border-top: 1px dashed rgba(226, 232, 240, 0.9);
+}
+
+.multiplier-control-modern {
   display: flex;
   align-items: center;
   gap: 2px;
   background: #FFFFFF;
-  border: 1px solid #CBD5E1;
+  border: 1.5px solid #CBD5E1;
   border-radius: 8px;
-  padding: 1px;
+  padding: 1px 3px;
+}
+
+.btn-unit-toggle {
+  border: none;
+  background: #F1F5F9;
+  color: var(--primary-forest, #154238);
+  font-size: 0.7rem;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-unit-toggle:hover {
+  background: #E2E8F0;
+}
+
+.mult-direct-input {
+  width: 44px;
+  border: none;
+  background: transparent;
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-align: center;
+  color: #0F1E17;
+  outline: none;
+  padding: 0;
+}
+
+.mult-direct-input:focus {
+  background: #F8FAFC;
+  border-radius: 4px;
 }
 
 .btn-mult {
-  width: 22px;
+  width: 20px;
   height: 22px;
   border: none;
   background: transparent;
   color: #334155;
+  font-size: 0.92rem;
   font-weight: 800;
   cursor: pointer;
   border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.1s;
 }
 
-.mult-value {
-  font-size: 0.75rem;
-  font-weight: 800;
-  color: #0F1E17;
-  min-width: 24px;
-  text-align: center;
+.btn-mult:hover {
+  background: #F1F5F9;
 }
 
-.item-calories {
-  text-align: right;
-  min-width: 48px;
+.item-calories-badge {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  padding: 2px 8px;
+  border-radius: 999px;
 }
 
-.item-cal-num {
-  font-size: 0.96rem;
-  font-weight: 800;
-  color: #0F1E17;
+.item-calories-badge .item-cal-num {
+  font-size: 1rem;
+  font-weight: 900;
+  color: var(--text-main, #0F1E17);
 }
 
-.item-cal-unit {
-  font-size: 0.62rem;
-  color: #64748B;
-  margin-left: 2px;
+.item-calories-badge .item-cal-unit {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--text-muted, #52665C);
 }
 
 .btn-fav-item {

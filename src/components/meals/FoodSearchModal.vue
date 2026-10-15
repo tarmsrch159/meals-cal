@@ -191,7 +191,7 @@
               class="rec-food-card"
             >
               <div class="rec-img-box">
-                <img :src="rec.image" :alt="rec.name" class="rec-food-img" />
+                <img :src="rec.image" :alt="rec.name" class="rec-food-img" @error="useFoodImageFallback" />
               </div>
               <div class="rec-info-wrap">
                 <h4 class="rec-name">{{ rec.name }}</h4>
@@ -240,6 +240,7 @@
 
         <!-- AI Result Highlight with Provider Logo -->
         <div v-if="aiResult" class="food-item-card ai-card">
+          <p class="ai-estimate-notice">ตัวเลขเป็นค่าประมาณจาก AI/ฐานข้อมูล โปรดตรวจสอบและปรับปริมาณก่อนบันทึก</p>
           <div class="card-top">
             <span v-if="aiResult.aiProvider === 'groq'" class="ai-provider-pill badge-groq">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="6" fill="#F55036"/><path d="M12 5C8.13 5 5 8.13 5 12s3.13 7 7 7 7-3.13 7-7h-7v2.5h4.24c-.65 1.77-2.36 3-4.24 3-2.48 0-4.5-2.02-4.5-4.5S9.52 7.5 12 7.5c1.15 0 2.2.43 3 1.15l1.77-1.77C15.54 5.76 13.86 5 12 5z" fill="#FFFFFF"/></svg>
@@ -254,10 +255,41 @@
               <span>คลังข้อมูลไทย (Local)</span>
             </span>
 
-            <div class="serving-stepper">
-              <button class="btn-step font-num" @click="adjustPortion(aiResult, -0.5)">-</button>
-              <span class="step-val font-num">{{ aiResult.multiplier || 1 }}x</span>
-              <button class="btn-step font-num" @click="adjustPortion(aiResult, 0.5)">+</button>
+            <div class="portion-unit-control">
+              <div class="unit-pill-selector">
+                <button 
+                  type="button" 
+                  class="btn-unit-pill" 
+                  :class="{ active: aiResult.portionUnit !== 'gram' }"
+                  @click="setPortionUnit(aiResult, 'portion')"
+                >
+                  จาน
+                </button>
+                <button 
+                  type="button" 
+                  class="btn-unit-pill" 
+                  :class="{ active: aiResult.portionUnit === 'gram' }"
+                  @click="setPortionUnit(aiResult, 'gram')"
+                >
+                  กรัม
+                </button>
+              </div>
+
+              <div class="serving-stepper-modern">
+                <button type="button" class="btn-step font-num" @click="stepPortion(aiResult, aiResult.portionUnit === 'gram' ? -25 : -0.25)">-</button>
+                <div class="step-input-wrap">
+                  <input 
+                    type="number" 
+                    v-model.number="aiResult.portionAmount" 
+                    @input="onPortionInputChange(aiResult)"
+                    :step="aiResult.portionUnit === 'gram' ? '5' : '0.1'"
+                    min="0.01" 
+                    class="step-num-input font-num"
+                  />
+                  <span class="step-unit-suffix">{{ aiResult.portionUnit === 'gram' ? 'g' : 'จาน' }}</span>
+                </div>
+                <button type="button" class="btn-step font-num" @click="stepPortion(aiResult, aiResult.portionUnit === 'gram' ? 25 : 0.25)">+</button>
+              </div>
             </div>
           </div>
           <div class="card-main">
@@ -268,7 +300,14 @@
                 <span class="cal-unit">kcal</span>
               </div>
             </div>
-            <div class="serving-text">{{ aiResult.servingSize }}</div>
+            <div class="serving-text font-num">
+              <span v-if="aiResult.portionUnit === 'gram'">
+                {{ aiResult.portionAmount }} กรัม (เทียบเท่า ≈ {{ (aiResult.multiplier || 1).toFixed(2) }} จาน)
+              </span>
+              <span v-else>
+                {{ aiResult.portionAmount }} จาน (น้ำหนัก ≈ {{ Math.round((aiResult.multiplier || 1) * (aiResult.baseGrams || 300)) }} กรัม)
+              </span>
+            </div>
             <div class="macros-grid font-num">
               <span class="m-cell carb">C: {{ ((aiResult.carbs || 0) * (aiResult.multiplier || 1)).toFixed(0) }}g</span>
               <span class="m-cell pro">P: {{ ((aiResult.protein || 0) * (aiResult.multiplier || 1)).toFixed(0) }}g</span>
@@ -303,10 +342,42 @@
                   <span>คลังไทย</span>
                 </span>
               </div>
-              <div class="serving-stepper">
-                <button class="btn-step font-num" @click="adjustPortion(item, -0.5)">-</button>
-                <span class="step-val font-num">{{ item.multiplier || 1 }}x</span>
-                <button class="btn-step font-num" @click="adjustPortion(item, 0.5)">+</button>
+
+              <div class="portion-unit-control">
+                <div class="unit-pill-selector">
+                  <button 
+                    type="button" 
+                    class="btn-unit-pill" 
+                    :class="{ active: item.portionUnit !== 'gram' }"
+                    @click="setPortionUnit(item, 'portion')"
+                  >
+                    จาน
+                  </button>
+                  <button 
+                    type="button" 
+                    class="btn-unit-pill" 
+                    :class="{ active: item.portionUnit === 'gram' }"
+                    @click="setPortionUnit(item, 'gram')"
+                  >
+                    กรัม
+                  </button>
+                </div>
+
+                <div class="serving-stepper-modern">
+                  <button type="button" class="btn-step font-num" @click="stepPortion(item, item.portionUnit === 'gram' ? -25 : -0.25)">-</button>
+                  <div class="step-input-wrap">
+                    <input 
+                      type="number" 
+                      v-model.number="item.portionAmount" 
+                      @input="onPortionInputChange(item)"
+                      :step="item.portionUnit === 'gram' ? '5' : '0.1'"
+                      min="0.01" 
+                      class="step-num-input font-num"
+                    />
+                    <span class="step-unit-suffix">{{ item.portionUnit === 'gram' ? 'g' : 'จาน' }}</span>
+                  </div>
+                  <button type="button" class="btn-step font-num" @click="stepPortion(item, item.portionUnit === 'gram' ? 25 : 0.25)">+</button>
+                </div>
               </div>
             </div>
 
@@ -318,7 +389,14 @@
                   <span class="cal-unit">kcal</span>
                 </div>
               </div>
-              <div class="serving-text">{{ item.servingSize }}</div>
+              <div class="serving-text font-num">
+                <span v-if="item.portionUnit === 'gram'">
+                  {{ item.portionAmount }} กรัม (เทียบเท่า ≈ {{ (item.multiplier || 1).toFixed(2) }} จาน)
+                </span>
+                <span v-else>
+                  {{ item.portionAmount }} จาน (น้ำหนัก ≈ {{ Math.round((item.multiplier || 1) * (item.baseGrams || 300)) }} กรัม)
+                </span>
+              </div>
 
               <div class="macros-grid font-num">
                 <span class="m-cell carb">C: {{ ((item.carbs || 0) * (item.multiplier || 1)).toFixed(0) }}g</span>
@@ -398,6 +476,12 @@ const searchQuery = ref('');
 const activeSubTab = ref('all'); // 'all' | 'favorites' | 'recent'
 const isSearchingAI = ref(false);
 const aiResult = ref(null);
+const foodImageFallback = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=180&auto=format&fit=crop&q=80';
+
+function useFoodImageFallback(event) {
+  event.target.onerror = null;
+  event.target.src = foodImageFallback;
+}
 
 function applyRecentSearch(term) {
   searchQuery.value = term;
@@ -444,11 +528,29 @@ const recommendedFoods = [
   }
 ];
 
+function parseBaseGrams(servingSize) {
+  if (!servingSize) return 300;
+  const match = String(servingSize).match(/(\d+)\s*(?:g|กรัม)/i);
+  if (match) return Number(match[1]) || 300;
+  return 300;
+}
+
+function formatInitialItem(item) {
+  const baseGrams = item.baseGrams || parseBaseGrams(item.servingSize);
+  return {
+    ...item,
+    baseGrams,
+    portionUnit: item.portionUnit || 'portion',
+    portionAmount: item.portionAmount !== undefined ? item.portionAmount : 1,
+    multiplier: item.multiplier !== undefined ? item.multiplier : 1
+  };
+}
+
 const localResults = ref([]);
 
 onMounted(() => {
   targetMeal.value = state.selectedMealType || 'breakfast';
-  localResults.value = THAI_FOOD_DATABASE.map(item => ({ ...item, multiplier: 1 }));
+  localResults.value = THAI_FOOD_DATABASE.map(formatInitialItem);
   
   nextTick(() => {
     if (searchInputRef.value) searchInputRef.value.focus();
@@ -473,11 +575,11 @@ watch(searchQuery, (newVal) => {
   aiResult.value = null;
 
   if (!q) {
-    localResults.value = THAI_FOOD_DATABASE.map(item => ({ ...item, multiplier: 1 }));
+    localResults.value = THAI_FOOD_DATABASE.map(formatInitialItem);
     return;
   }
   // ค้นหาเฉพาะในฐานข้อมูลอาหารไทยมาตรฐาน (Local) ประหยัด Token
-  localResults.value = searchLocalFood(q).map(item => ({ ...item, multiplier: 1 }));
+  localResults.value = searchLocalFood(q).map(formatInitialItem);
 });
 
 function clearQuery() {
@@ -501,7 +603,7 @@ async function askGeminiExplicit() {
 
   try {
     const result = await estimateNutritionWithGemini(q);
-    aiResult.value = { ...result, multiplier: 1 };
+    aiResult.value = formatInitialItem(result);
   } catch (err) {
     console.error('AI estimate error:', err);
     calorieStore.showToast('ไม่สามารถเรียกใช้ AI ได้ กรุณาลองใหม่อีกครั้ง', 'error');
@@ -510,14 +612,58 @@ async function askGeminiExplicit() {
   }
 }
 
-function adjustPortion(item, delta) {
-  const current = item.multiplier || 1;
-  const next = Math.round((current + delta) * 10) / 10;
-  if (next >= 0.5 && next <= 5) item.multiplier = next;
+function setPortionUnit(item, newUnit) {
+  if (!item.baseGrams) item.baseGrams = parseBaseGrams(item.servingSize);
+  if (item.portionUnit === newUnit) return;
+
+  item.portionUnit = newUnit;
+  if (newUnit === 'gram') {
+    item.portionAmount = Math.round((item.multiplier || 1) * item.baseGrams * 10) / 10;
+  } else {
+    const rawPortion = (Number(item.portionAmount) || item.baseGrams) / item.baseGrams;
+    item.portionAmount = Math.round(rawPortion * 100) / 100;
+    item.multiplier = Math.max(0.01, item.portionAmount);
+  }
+}
+
+function onPortionInputChange(item) {
+  if (!item.baseGrams) item.baseGrams = parseBaseGrams(item.servingSize);
+  const val = Math.max(0.01, Number(item.portionAmount) || 0.01);
+  item.portionAmount = val;
+
+  if (item.portionUnit === 'gram') {
+    item.multiplier = Math.max(0.01, val / item.baseGrams);
+  } else {
+    item.multiplier = val;
+  }
+}
+
+function stepPortion(item, delta) {
+  if (!item.baseGrams) item.baseGrams = parseBaseGrams(item.servingSize);
+  const current = Number(item.portionAmount) || (item.portionUnit === 'gram' ? item.baseGrams : 1);
+  let next = Math.round((current + delta) * 100) / 100;
+
+  if (item.portionUnit === 'gram') {
+    if (next < 5) next = 5;
+    item.portionAmount = next;
+    item.multiplier = Math.max(0.01, next / item.baseGrams);
+  } else {
+    if (next < 0.1) next = 0.1;
+    if (next > 20) next = 20;
+    item.portionAmount = next;
+    item.multiplier = next;
+  }
 }
 
 function addFoodToMeal(item) {
-  calorieStore.addMealItem(targetMeal.value, item, item.multiplier || 1);
+  if (!item.baseGrams) item.baseGrams = parseBaseGrams(item.servingSize);
+  calorieStore.addMealItem(
+    targetMeal.value, 
+    item, 
+    item.multiplier || 1, 
+    item.portionUnit || 'portion', 
+    item.portionAmount
+  );
   searchQuery.value = '';
   aiResult.value = null;
 }
@@ -1106,30 +1252,97 @@ function closeModal() {
   color: #15803D;
 }
 
-.serving-stepper {
+.portion-unit-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.unit-pill-selector {
+  display: flex;
+  background: #F1F5F9;
+  border-radius: 8px;
+  padding: 2px;
+  border: 1px solid #E2E8F0;
+}
+
+.btn-unit-pill {
+  border: none;
+  background: transparent;
+  padding: 2px 7px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #64748B;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-unit-pill.active {
+  background: #FFFFFF;
+  color: var(--primary-forest, #154238);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.serving-stepper-modern {
   display: flex;
   align-items: center;
   gap: 2px;
   background: #FFFFFF;
   border: 1px solid #CBD5E1;
   border-radius: 8px;
-  padding: 1px;
+  padding: 1px 3px;
 }
 
 .btn-step {
   width: 20px;
-  height: 20px;
+  height: 22px;
   border: none;
   background: transparent;
+  font-size: 0.9rem;
   font-weight: 800;
+  color: #475569;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background 0.1s;
 }
 
-.step-val {
-  font-size: 0.74rem;
+.btn-step:hover {
+  background: #F1F5F9;
+  color: #0F1E17;
+}
+
+.step-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+}
+
+.step-num-input {
+  width: 44px;
+  border: none;
+  background: transparent;
+  font-size: 0.78rem;
   font-weight: 800;
-  min-width: 22px;
   text-align: center;
+  color: #0F1E17;
+  outline: none;
+  padding: 1px 0;
+}
+
+.step-num-input:focus {
+  background: #F8FAFC;
+  border-radius: 4px;
+}
+
+.step-unit-suffix {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #64748B;
+  margin-right: 2px;
 }
 
 .food-title-row {

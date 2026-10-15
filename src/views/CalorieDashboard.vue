@@ -85,6 +85,9 @@
 
         <div class="date-pill-center">
           <span class="date-thai-text">{{ formattedDateThai }}</span>
+          <button type="button" class="date-calendar-trigger" @click="toggleCalendar" :aria-expanded="showCalendar" aria-label="เลือกวันที่">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>
+          </button>
           <button 
             v-if="!calorieStore.isToday()" 
             type="button" 
@@ -103,6 +106,18 @@
         >
           ›
         </button>
+      </div>
+      <div v-if="showCalendar" class="calendar-popover" @click.stop>
+        <div class="calendar-heading">
+          <button type="button" class="calendar-nav" @click="moveCalendarMonth(-1)" aria-label="เดือนก่อนหน้า">‹</button>
+          <strong>{{ calendarMonthLabel }}</strong>
+          <button type="button" class="calendar-nav" @click="moveCalendarMonth(1)" aria-label="เดือนถัดไป" :disabled="isCurrentCalendarMonth">›</button>
+        </div>
+        <div class="calendar-grid calendar-weekdays"><span v-for="day in weekdayLabels" :key="day">{{ day }}</span></div>
+        <div class="calendar-grid">
+          <button v-for="day in calendarDays" :key="day.date" type="button" class="calendar-day" :class="{ muted: !day.currentMonth, selected: day.date === state.selectedDate, today: day.date === todayDate }" :disabled="day.date > todayDate" @click="selectCalendarDate(day.date)">{{ day.dayNumber }}</button>
+        </div>
+        <button v-if="!calorieStore.isToday()" type="button" class="calendar-today" @click="goToToday">กลับไปวันนี้</button>
       </div>
 
       <!-- Top Segmented Navigation Pills -->
@@ -266,6 +281,13 @@
 
         <!-- 2. Meals Section ("มื้ออาหารวันนี้") -->
         <section class="meals-list-section">
+          <div v-if="totalItemsCount === 0" class="diary-empty-state">
+            <div class="empty-state-icon">🍽️</div>
+            <h2>{{ calorieStore.isToday() ? 'เริ่มบันทึกมื้อแรกของวันนี้' : 'วันนี้ยังไม่มีรายการอาหาร' }}</h2>
+            <p>เพิ่มอาหารจากเมนู ค้นหา หรือกรอกข้อมูลเองได้ และข้อมูลจะบันทึกไว้ในอุปกรณ์นี้</p>
+            <button type="button" class="btn-add-meal-pill" @click="calorieStore.openSearchModal('breakfast')">+ เพิ่มอาหารมื้อแรก</button>
+            <button type="button" class="btn-clear-today-pill" @click="calorieStore.openQuickAddModal('breakfast')">กรอกข้อมูลเอง</button>
+          </div>
           <div class="section-title-row">
             <div>
               <h2 class="section-main-title">มื้ออาหารวันนี้</h2>
@@ -481,7 +503,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { calorieStore, state } from '../stores/useCalorieStore.js';
 import MealCard from '../components/meals/MealCard.vue';
 import AiCoachTab from '../components/meals/AiCoachTab.vue';
@@ -496,6 +518,10 @@ import SettingsModal from '../components/meals/SettingsModal.vue';
 import WeeklyAnalyticsModal from '../components/meals/WeeklyAnalyticsModal.vue';
 
 const showClearAllModal = ref(false);
+const todayDate = calorieStore.getTodayDateString();
+const showCalendar = ref(false);
+const calendarMonth = ref(new Date(`${state.selectedDate}T00:00:00`));
+const weekdayLabels = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
 
 const dailyTotals = computed(() => calorieStore.getDailyTotals());
 const remainingCalories = computed(() => calorieStore.getRemainingCalories());
@@ -511,6 +537,37 @@ function confirmClearAllMeals() {
   calorieStore.clearAllMealsForDate();
   showClearAllModal.value = false;
 }
+
+const calendarMonthLabel = computed(() => new Intl.DateTimeFormat('th-TH', { month: 'long', year: 'numeric' }).format(calendarMonth.value));
+const isCurrentCalendarMonth = computed(() => calendarMonth.value.getFullYear() === new Date(`${todayDate}T00:00:00`).getFullYear() && calendarMonth.value.getMonth() === new Date(`${todayDate}T00:00:00`).getMonth());
+const calendarDays = computed(() => {
+  const year = calendarMonth.value.getFullYear();
+  const month = calendarMonth.value.getMonth();
+  const firstWeekday = new Date(year, month, 1).getDay();
+  const count = new Date(year, month + 1, 0).getDate();
+  const previousCount = new Date(year, month, 0).getDate();
+  return Array.from({ length: 42 }, (_, index) => {
+    const dayNumber = index - firstWeekday + 1;
+    const date = dayNumber < 1
+      ? new Date(year, month - 1, previousCount + dayNumber)
+      : dayNumber > count
+        ? new Date(year, month + 1, dayNumber - count)
+        : new Date(year, month, dayNumber);
+    const dateString = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    return { date: dateString, dayNumber: date.getDate(), currentMonth: date.getMonth() === month };
+  });
+});
+
+function toggleCalendar() {
+  if (!showCalendar.value) calendarMonth.value = new Date(`${state.selectedDate}T00:00:00`);
+  showCalendar.value = !showCalendar.value;
+}
+function moveCalendarMonth(delta) { calendarMonth.value = new Date(calendarMonth.value.getFullYear(), calendarMonth.value.getMonth() + delta, 1); }
+function selectCalendarDate(date) { if (date <= todayDate) calorieStore.setDate(date); showCalendar.value = false; }
+function goToToday() { calorieStore.setToday(); calendarMonth.value = new Date(`${todayDate}T00:00:00`); showCalendar.value = false; }
+function handleCalendarOutsideClick(event) { if (!event.target.closest('.date-picker-banner')) showCalendar.value = false; }
+onMounted(() => document.addEventListener('click', handleCalendarOutsideClick));
+onBeforeUnmount(() => document.removeEventListener('click', handleCalendarOutsideClick));
 
 // Circular Gauge Ring Math (Radius 42)
 const ringRadius = 42;
@@ -628,6 +685,7 @@ function toggleWaterUpTo(targetCount) {
 
 /* Date Picker Banner inside Header */
 .date-picker-banner {
+  position: relative;
   background: rgba(0, 0, 0, 0.2);
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 16px;
@@ -662,6 +720,30 @@ function toggleWaterUpTo(targetCount) {
   align-items: center;
   gap: 0.5rem;
 }
+.date-calendar-trigger { width:30px; height:30px; display:grid; place-items:center; padding:0; border:1px solid rgba(255,255,255,.2); border-radius:9px; background:rgba(255,255,255,.1); color:#D4FF32; cursor:pointer; transition:background .15s,transform .15s; }
+.date-calendar-trigger:hover { background:rgba(255,255,255,.2); transform:translateY(-1px); }
+.date-calendar-trigger svg { width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+.calendar-popover { position:absolute; z-index:40; top:calc(100% + 8px); left:50%; width:min(320px,calc(100vw - 40px)); padding:14px; transform:translateX(-50%); border:1px solid #DDE9E1; border-radius:18px; background:#FFF; color:#173E33; box-shadow:0 18px 45px rgba(13,45,34,.22); }
+.calendar-heading { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.calendar-heading strong { color:#173E33; font-size:.94rem; font-weight:800; }
+.calendar-nav { width:30px; height:30px; border:0; border-radius:9px; background:#F1F6F2; color:#285C4C; font-size:1.35rem; line-height:1; cursor:pointer; }
+.calendar-nav:hover:not(:disabled) { background:#E4EFE7; }
+.calendar-nav:disabled { opacity:.35; cursor:default; }
+.calendar-grid { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:3px; }
+.calendar-weekdays { margin-bottom:5px; color:#84958C; font-size:.68rem; font-weight:700; text-align:center; }
+.calendar-weekdays span { padding:5px 0; }
+.calendar-day { aspect-ratio:1; border:0; border-radius:10px; background:transparent; color:#334A40; font:inherit; font-size:.77rem; cursor:pointer; }
+.calendar-day:hover:not(:disabled) { background:#EDF4EE; }
+.calendar-day.muted { color:#B4C0B9; }
+.calendar-day.selected { background:#D4FF32; color:#173E33; font-weight:900; box-shadow:0 3px 9px rgba(176,218,26,.28); }
+.calendar-day.today:not(.selected) { outline:1.5px solid #A8C5B3; outline-offset:-2px; font-weight:800; }
+.calendar-day:disabled { color:#D7DED9; cursor:default; }
+.calendar-today { display:block; margin:10px auto 0; padding:6px 12px; border:0; border-radius:999px; background:#EDF4EE; color:#285C4C; font:inherit; font-size:.72rem; font-weight:800; cursor:pointer; }
+.diary-empty-state { margin: 1rem 0; padding: 1.5rem; border-radius: 20px; background: #fff; text-align: center; box-shadow: 0 8px 24px rgba(20, 50, 35, .06); }
+.empty-state-icon { font-size: 2rem; }
+.diary-empty-state h2 { margin: .45rem 0; color: var(--text-main, #0F1E17); font-size: 1.05rem; }
+.diary-empty-state p { margin: .35rem auto 1rem; max-width: 340px; color: var(--text-muted, #52665C); font-size: .84rem; }
+.diary-empty-state button { margin: 0 .2rem; }
 
 .date-thai-text {
   font-size: 0.86rem;

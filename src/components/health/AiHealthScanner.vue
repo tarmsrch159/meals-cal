@@ -29,6 +29,7 @@
           :src="previewUrl" 
           alt="Scanned Preview" 
           class="preview-image" 
+          @error="usePreviewFallback"
         />
 
         <!-- Scanner Guidelines & HUD Animation -->
@@ -159,6 +160,11 @@ const cameraError = ref(false);
 const previewUrl = ref(null);
 const selectedFile = ref(null);
 const isAnalyzing = ref(false);
+
+const usePreviewFallback = (event) => {
+  event.target.onerror = null;
+  event.target.src = '/doolae_logo.png';
+};
 
 let mediaStream = null;
 

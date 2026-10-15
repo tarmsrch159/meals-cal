@@ -63,6 +63,14 @@
           </div>
         </div>
 
+        <div class="form-group">
+          <label class="form-label">จำนวนที่ทาน</label>
+          <div class="input-with-unit">
+            <input type="number" v-model.number="portionAmount" class="form-input" min="0.01" step="0.01" required />
+            <span class="unit-tag">หน่วย</span>
+          </div>
+        </div>
+
         <!-- Optional Macros Section -->
         <div class="macros-collapsible">
           <div class="macro-section-title">สารอาหารหลัก (ไม่บังคับ):</div>
@@ -110,6 +118,7 @@ const carbs = ref(null);
 const protein = ref(null);
 const fat = ref(null);
 const servingSize = ref('1 จาน');
+const portionAmount = ref(1);
 const nameInputRef = ref(null);
 
 onMounted(() => {
@@ -134,7 +143,7 @@ function handleSubmit() {
     source: 'เพิ่มเอง'
   };
 
-  calorieStore.addMealItem(targetMeal.value, item, 1);
+  calorieStore.addMealItem(targetMeal.value, item, portionAmount.value);
   calorieStore.closeModal();
 }
 
