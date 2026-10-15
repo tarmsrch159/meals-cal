@@ -11,6 +11,11 @@
       </div>
     </div>
 
+    <div class="chart-section-card exercise-week-card">
+      <div class="chart-header"><h4 class="chart-title">กิจกรรมที่บันทึกใน 7 วัน</h4><strong>{{ weeklyExerciseCalories.toLocaleString() }} kcal รวม</strong></div>
+      <div class="exercise-week-days"><div v-for="day in stats.days" :key="day.dateStr"><span>{{ day.dayShort }} {{ day.dayNum }}</span><strong>{{ calorieStore.getExerciseCalories(day.dateStr).toLocaleString() }} kcal</strong></div></div>
+    </div>
+
     <!-- 1. Key Metrics Cards Row -->
     <div class="metrics-summary-grid">
       <div class="metric-box">
@@ -213,6 +218,7 @@ const hoveredDate = ref(null);
 
 const stats = computed(() => calorieStore.getSevenDayStats());
 const currentStreak = computed(() => calorieStore.calculateStreak());
+const weeklyExerciseCalories = computed(() => stats.value.days.reduce((total, day) => total + calorieStore.getExerciseCalories(day.dateStr), 0));
 
 const maxChartScale = computed(() => {
   const maxDay = Math.max(...stats.value.days.map(d => d.calories), stats.value.targetCal);
@@ -254,6 +260,11 @@ const daysMetWater = computed(() => {
   return stats.value.days.filter(d => d.water >= 8).length;
 });
 </script>
+
+<style scoped>
+.exercise-week-days { display:grid; grid-template-columns:repeat(auto-fit,minmax(110px,1fr)); gap:.55rem; }
+.exercise-week-days div { display:flex; justify-content:space-between; gap:.4rem; padding:.65rem; border-radius:10px; background:#f3f7f5; font-size:.82rem; }
+</style>
 
 <style scoped>
 .tab-view-container {

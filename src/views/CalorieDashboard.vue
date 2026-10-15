@@ -193,7 +193,7 @@
               <span class="hero-card-label">แคลอรี่รวมวันนี้</span>
               <div class="hero-kcal-display font-num">
                 <span class="eaten-highlight font-num">{{ dailyTotals.calories.toLocaleString() }}</span>
-                <span class="target-slash font-num">/ {{ (state.userProfile.calorieTarget || 2000).toLocaleString() }} kcal</span>
+                <span class="target-slash font-num">/ {{ dailyCalorieTarget.toLocaleString() }} kcal</span>
               </div>
             </div>
 
@@ -438,6 +438,28 @@
           </div>
         </section>
 
+        <section class="water-card-energetic exercise-card">
+          <div class="water-head">
+            <div><h4 class="water-sec-title">กิจกรรมวันนี้</h4><span class="water-ml-sub">เผาผลาญเพิ่ม {{ exerciseCalories }} kcal · เป้าหมายวันนี้ {{ dailyCalorieTarget }} kcal</span></div>
+            <button type="button" class="btn-add-meal-pill" @click="showExerciseForm = !showExerciseForm">{{ showExerciseForm ? 'ยกเลิก' : '+ เพิ่มกิจกรรม' }}</button>
+          </div>
+          <form v-if="showExerciseForm" class="exercise-form" @submit.prevent="addExercise">
+            <span class="exercise-form-label">เลือกกิจกรรม</span>
+            <div class="activity-choice-grid">
+              <button v-for="activity in activityOptions" :key="activity.id" type="button" class="activity-choice" :class="{ selected: exerciseForm.type === activity.id }" @click="exerciseForm.type = activity.id">
+                <span class="activity-emoji">{{ activity.icon }}</span><span>{{ activity.name }}</span>
+              </button>
+            </div>
+            <label class="duration-field"><span>ระยะเวลา</span><div><input v-model.number="exerciseForm.minutes" type="number" min="1" required placeholder="เช่น 30" aria-label="ระยะเวลาเป็นนาที" /><span>นาที</span></div></label>
+            <div class="exercise-preview"><span class="preview-icon">{{ exerciseTypes[exerciseForm.type].icon }}</span><div class="preview-copy"><strong>{{ exerciseTypes[exerciseForm.type].name }}{{ exerciseForm.minutes ? ` ${exerciseForm.minutes} นาที` : '' }}</strong><span>น้ำหนัก {{ state.userProfile.weight }} kg · เผาผลาญโดยประมาณ</span></div><strong class="preview-kcal">{{ estimatedExerciseCalories }} <small>kcal</small></strong></div>
+            <button class="exercise-save" type="submit" :disabled="!exerciseForm.minutes">บันทึกกิจกรรม</button>
+          </form>
+          <div v-if="todayExercises.length" class="exercise-list">
+            <div v-for="item in todayExercises" :key="item.id" class="exercise-row"><span>{{ item.name }} · {{ item.minutes }} นาที</span><strong>+{{ item.calories }} kcal</strong><button type="button" @click="calorieStore.removeExercise(item.id)" aria-label="ลบกิจกรรม">ลบ</button></div>
+          </div>
+          <p v-else class="water-ml-sub">บันทึกกิจกรรมเพื่อเพิ่มพลังงานที่ใช้ได้ในเป้าหมายวันนี้</p>
+        </section>
+
         <!-- 5. Energetic Streak Card -->
         <section class="streak-banner-card">
           <div class="streak-left">
@@ -495,6 +517,7 @@
     <!-- Active Global Modals -->
     <FoodSearchModal v-if="state.activeModal === 'search'" />
     <FoodScannerModal v-if="state.activeModal === 'scanner'" />
+    <BarcodeScannerModal v-if="state.activeModal === 'barcode-scanner'" />
     <QuickAddModal v-if="state.activeModal === 'quick-add'" />
     <BmrCalculatorModal v-if="state.activeModal === 'bmr-calc'" />
     <SettingsModal v-if="state.activeModal === 'settings'" />
@@ -516,8 +539,11 @@ import QuickAddModal from '../components/meals/QuickAddModal.vue';
 import BmrCalculatorModal from '../components/meals/BmrCalculatorModal.vue';
 import SettingsModal from '../components/meals/SettingsModal.vue';
 import WeeklyAnalyticsModal from '../components/meals/WeeklyAnalyticsModal.vue';
+import BarcodeScannerModal from '../components/meals/BarcodeScannerModal.vue';
 
 const showClearAllModal = ref(false);
+const showExerciseForm = ref(false);
+const exerciseForm = ref({ type: 'walk', minutes: null });
 const todayDate = calorieStore.getTodayDateString();
 const showCalendar = ref(false);
 const calendarMonth = ref(new Date(`${state.selectedDate}T00:00:00`));
@@ -527,6 +553,17 @@ const dailyTotals = computed(() => calorieStore.getDailyTotals());
 const remainingCalories = computed(() => calorieStore.getRemainingCalories());
 const currentWater = computed(() => calorieStore.getWater());
 const currentStreak = computed(() => calorieStore.calculateStreak());
+const todayExercises = computed(() => calorieStore.getExercises());
+const exerciseCalories = computed(() => calorieStore.getExerciseCalories());
+const dailyCalorieTarget = computed(() => (state.userProfile.calorieTarget || 2000) + exerciseCalories.value);
+const exerciseTypes = { walk: { name: 'เดินเร็ว', icon: '🚶', met: 4.3 }, run: { name: 'วิ่ง', icon: '🏃', met: 8.3 }, cycle: { name: 'ปั่นจักรยาน', icon: '🚴', met: 7.5 }, strength: { name: 'เวทเทรนนิ่ง', icon: '🏋️', met: 5 }, swim: { name: 'ว่ายน้ำ', icon: '🏊', met: 6 } };
+const activityOptions = Object.entries(exerciseTypes).map(([id, item]) => ({ id, ...item }));
+const estimatedExerciseCalories = computed(() => Math.round((exerciseTypes[exerciseForm.value.type]?.met || 4) * 3.5 * (Number(state.userProfile.weight) || 65) / 200 * (Number(exerciseForm.value.minutes) || 0)));
+function addExercise() {
+  calorieStore.addExercise({ name: exerciseTypes[exerciseForm.value.type].name, type: exerciseForm.value.type, minutes: Number(exerciseForm.value.minutes), calories: estimatedExerciseCalories.value });
+  exerciseForm.value = { type: 'walk', minutes: null };
+  showExerciseForm.value = false;
+}
 
 const totalItemsCount = computed(() => {
   const meals = calorieStore.getMealsForDate();
@@ -574,7 +611,7 @@ const ringRadius = 42;
 const ringCircumference = 2 * Math.PI * ringRadius;
 
 const caloriePercent = computed(() => {
-  const target = state.userProfile.calorieTarget || 2000;
+  const target = dailyCalorieTarget.value;
   return Math.min(150, Math.round((dailyTotals.value.calories / target) * 100));
 });
 
@@ -611,6 +648,35 @@ function toggleWaterUpTo(targetCount) {
   state.waterByDate[state.selectedDate] = targetCount;
 }
 </script>
+
+<style scoped>
+.exercise-card { margin-top: 1rem; padding: 1.1rem; border: 1px solid #e1ebe6; border-radius: 20px; background: linear-gradient(135deg,#fff 0%,#f4f8f5 100%); box-shadow: 0 8px 24px #173c350a; }
+.exercise-form { display: grid; gap: .8rem; margin: 1rem 0 .25rem; padding: 1rem; border-radius: 16px; background: #f8faf8; border: 1px solid #e3ece7; }
+.exercise-form-label,.duration-field>span { color:#425d54; font-size:.82rem; font-weight:750; }
+.activity-choice-grid { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:.5rem; }
+.activity-choice { min-height:76px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:.35rem; padding:.5rem .25rem; color:#52655e; background:#fff; border:1px solid #dce6e1; border-radius:13px; font-size:.72rem; font-weight:700; cursor:pointer; transition:.18s ease; }
+.activity-choice:hover { border-color:#7da393; transform:translateY(-1px); }
+.activity-choice.selected { color:#154238; background:#e8f2ed; border:1.5px solid #34745d; box-shadow:0 0 0 3px #34745d12; }
+.activity-emoji { font-size:1.25rem; line-height:1; }
+.duration-field { display:grid; gap:.4rem; }
+.duration-field div { display:flex; align-items:center; border:1px solid #d8e2dd; border-radius:11px; background:white; padding-right:.8rem; color:#7b8a84; }
+.duration-field input { width:100%; min-width:0; padding:.75rem; border:0; outline:0; background:transparent; color:#163c33; font:inherit; }
+.exercise-preview { display:flex; align-items:center; gap:.7rem; padding:.8rem .9rem; border:1px solid #dceae2; border-radius:13px; background:linear-gradient(110deg,#edf5f0,#f7faf8); }
+.preview-icon { display:grid; place-items:center; width:40px; height:40px; flex:0 0 40px; border-radius:12px; background:#fff; font-size:1.25rem; }
+.preview-copy { display:grid; gap:.2rem; flex:1; min-width:0; }
+.preview-copy strong { color:#214c3d; font-size:.88rem; }
+.preview-copy span { color:#7a8f86; font-size:.7rem; }
+.preview-kcal { color:#154238; font-size:1.25rem; white-space:nowrap; }
+.preview-kcal small { font-size:.7rem; }
+.exercise-save { width:100%; padding:.8rem; border:0; border-radius:11px; color:white; background:#154238; font-weight:750; cursor:pointer; }
+.exercise-save:disabled { opacity:.45; cursor:not-allowed; }
+.exercise-list { margin-top:.75rem; }
+.exercise-row { display:flex; align-items:center; gap:.75rem; padding:.65rem .2rem; border-top:1px solid #e2e8e0; color:#52655e; font-size:.88rem; }
+.exercise-row span { flex:1; }
+.exercise-row strong { color:#24624c; }
+.exercise-row button { padding:.35rem .6rem; border:0; border-radius:8px; color:#9b5147; background:#fbefed; font-size:.75rem; }
+@media (max-width:430px) { .activity-choice-grid { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+</style>
 
 <style scoped>
 .dashboard-shell {

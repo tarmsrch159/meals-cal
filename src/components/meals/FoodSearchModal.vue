@@ -71,6 +71,7 @@
             <circle cx="12" cy="13" r="4"></circle>
           </svg>
         </button>
+        <button type="button" class="btn-scan-shortcut" @click="openBarcodeScanner" title="สแกนบาร์โค้ดอาหาร" aria-label="สแกนบาร์โค้ด">▦</button>
       </div>
 
       <!-- Quick Sub-Tabs: All / Favorites / Recent -->
@@ -477,6 +478,10 @@ const activeSubTab = ref('all'); // 'all' | 'favorites' | 'recent'
 const isSearchingAI = ref(false);
 const aiResult = ref(null);
 const foodImageFallback = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=180&auto=format&fit=crop&q=80';
+
+function openBarcodeScanner() {
+  calorieStore.openBarcodeScanner(targetMeal.value);
+}
 
 function useFoodImageFallback(event) {
   event.target.onerror = null;

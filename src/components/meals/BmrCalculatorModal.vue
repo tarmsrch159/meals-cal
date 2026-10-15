@@ -6,6 +6,7 @@
           <h2 class="modal-title">คำนวณ BMR / TDEE & ตั้งเป้าหมาย</h2>
           <p class="modal-subtitle">คำนวณพลังงานที่ร่างกายต้องการต่อวันตามสรีระและกิจกรรม</p>
         </div>
+
         <button type="button" class="btn-close" @click="closeModal">✕</button>
       </div>
 
@@ -47,6 +48,20 @@
             <label class="form-label">ส่วนสูง (cm)</label>
             <input type="number" v-model.number="form.height" class="form-input" min="100" max="230" />
           </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">เปอร์เซ็นต์ไขมันในร่างกาย (%)</label>
+          <input
+            type="number"
+            v-model.number="form.bodyFatPercentage"
+            class="form-input"
+            min="1"
+            max="70"
+            step="0.1"
+            placeholder="ไม่บังคับ เช่น 20"
+          />
+          <small class="form-hint">กรอกเพื่อคำนวณ BMR ด้วยมวลไร้ไขมัน หากเว้นว่างจะใช้สูตรตามเพศ อายุ น้ำหนัก และส่วนสูง</small>
         </div>
 
         <!-- Activity Level -->
@@ -153,6 +168,7 @@ const form = reactive({
   age: state.userProfile.age || 28,
   weight: state.userProfile.weight || 65,
   height: state.userProfile.height || 170,
+  bodyFatPercentage: state.userProfile.bodyFatPercentage ?? null,
   activityLevel: state.userProfile.activityLevel || 'moderate',
   goal: state.userProfile.goal || 'maintain',
   dietType: state.userProfile.dietType || 'balanced'
@@ -165,6 +181,7 @@ function applyTargets() {
   state.userProfile.age = form.age;
   state.userProfile.weight = form.weight;
   state.userProfile.height = form.height;
+  state.userProfile.bodyFatPercentage = form.bodyFatPercentage;
   state.userProfile.activityLevel = form.activityLevel;
   state.userProfile.goal = form.goal;
   state.userProfile.dietType = form.dietType;

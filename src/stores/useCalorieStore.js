@@ -24,6 +24,7 @@ const defaultState = {
   waterByDate: {
     [todayStr]: 0
   },
+  exercisesByDate: {},
 
   // User Profile & Macro Targets
   userProfile: {
@@ -88,6 +89,7 @@ function loadSavedState() {
         selectedDate: today, // Always auto-select current date on app load
         mealsByDate: { ...defaultState.mealsByDate, ...(parsed.mealsByDate || {}) },
         waterByDate: { ...defaultState.waterByDate, ...(parsed.waterByDate || {}) },
+        exercisesByDate: { ...(parsed.exercisesByDate || {}) },
         userProfile: { ...defaultState.userProfile, ...(parsed.userProfile || {}) },
         favorites: Array.isArray(parsed.favorites) ? parsed.favorites : defaultState.favorites,
         fasting: { ...defaultState.fasting, ...(parsed.fasting || {}) },
@@ -131,7 +133,7 @@ if (typeof window !== 'undefined') {
 
 // Auto-save to LocalStorage on changes
 watch(
-  () => [state.activeTab, state.mealsByDate, state.waterByDate, state.userProfile, state.favorites, state.fasting, state.recentSearches, state.aiCoachCache],
+  () => [state.activeTab, state.mealsByDate, state.waterByDate, state.exercisesByDate, state.userProfile, state.favorites, state.fasting, state.recentSearches, state.aiCoachCache],
   () => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
@@ -139,6 +141,7 @@ watch(
         selectedDate: state.selectedDate,
         mealsByDate: state.mealsByDate,
         waterByDate: state.waterByDate,
+        exercisesByDate: state.exercisesByDate,
         userProfile: state.userProfile,
         favorites: state.favorites,
         fasting: state.fasting,
@@ -182,6 +185,11 @@ export const calorieStore = {
   openScannerModal(mealType = 'breakfast') {
     state.selectedMealType = mealType;
     state.activeModal = 'scanner';
+  },
+
+  openBarcodeScanner(mealType = 'breakfast') {
+    state.selectedMealType = mealType;
+    state.activeModal = 'barcode-scanner';
   },
 
   openQuickAddModal(mealType = 'breakfast') {
@@ -466,7 +474,26 @@ export const calorieStore = {
 
   getRemainingCalories(dateStr = state.selectedDate) {
     const daily = this.getDailyTotals(dateStr);
-    return state.userProfile.calorieTarget - daily.calories;
+    return state.userProfile.calorieTarget + this.getExerciseCalories(dateStr) - daily.calories;
+  },
+
+  getExercises(dateStr = state.selectedDate) {
+    return state.exercisesByDate[dateStr] || [];
+  },
+
+  getExerciseCalories(dateStr = state.selectedDate) {
+    return this.getExercises(dateStr).reduce((total, activity) => total + Number(activity.calories || 0), 0);
+  },
+
+  addExercise(activity) {
+    const date = state.selectedDate;
+    if (!state.exercisesByDate[date]) state.exercisesByDate[date] = [];
+    state.exercisesByDate[date].push({ ...activity, id: `exercise_${Date.now()}` });
+  },
+
+  removeExercise(id) {
+    const date = state.selectedDate;
+    state.exercisesByDate[date] = this.getExercises(date).filter((item) => item.id !== id);
   },
 
   getMealTypeName(type) {
@@ -496,13 +523,20 @@ export const calorieStore = {
     const height = Number(p.height) || 170;
     const age = Number(p.age) || 28;
     const gender = p.gender || 'male';
+    const bodyFatPercentage = Number(p.bodyFatPercentage);
 
-    // Mifflin-St Jeor Equation
-    let bmr = 10 * weight + 6.25 * height - 5 * age;
-    if (gender === 'male') {
-      bmr += 5;
+    // Use Katch-McArdle when body fat is provided; otherwise use Mifflin-St Jeor.
+    let bmr;
+    if (Number.isFinite(bodyFatPercentage) && bodyFatPercentage > 0 && bodyFatPercentage < 100) {
+      const leanBodyMass = weight * (1 - bodyFatPercentage / 100);
+      bmr = 370 + 21.6 * leanBodyMass;
     } else {
-      bmr -= 161;
+      bmr = 10 * weight + 6.25 * height - 5 * age;
+      if (gender === 'male') {
+        bmr += 5;
+      } else {
+        bmr -= 161;
+      }
     }
 
     // Activity Multiplier
@@ -724,7 +758,8 @@ export const calorieStore = {
     const avgCarbs = daysWithLogs > 0 ? Math.round((totalCarbs / daysWithLogs) * 10) / 10 : 0;
     const avgProtein = daysWithLogs > 0 ? Math.round((totalProtein / daysWithLogs) * 10) / 10 : 0;
     const avgFat = daysWithLogs > 0 ? Math.round((totalFat / daysWithLogs) * 10) / 10 : 0;
-    const weeklyDeficit = (targetCal * 7) - totalCals;
+    const weeklyExerciseCalories = days.reduce((total, day) => total + this.getExerciseCalories(day.dateStr), 0);
+    const weeklyDeficit = (targetCal * 7 + weeklyExerciseCalories) - totalCals;
 
     return {
       days,
@@ -732,6 +767,7 @@ export const calorieStore = {
       avgCarbs,
       avgProtein,
       avgFat,
+      weeklyExerciseCalories,
       totalCals,
       targetCal,
       daysWithLogs,
